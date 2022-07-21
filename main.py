@@ -1,4 +1,5 @@
 import chess.pgn
+from stockfish import Stockfish
 
 def all_legal_pieces(str_of_pieces):
     valid_chars = ['P', 'p', 'N', 'n', 'B', 'b', 'R', 'r', 'Q', 'q', 'K', 'k']
@@ -34,6 +35,7 @@ def main():
         # Each string will store all the piece(s) and pawn(s) the user wants
         # in that particular row/column. E.g.: "PKp" means to have a white pawn,
         # white king, and black pawn in the column/row that string represents.
+    stockfish = Stockfish(path="stockfish")
     pgn = open("big database over 2200.pgn")
     current_game = chess.pgn.read_game(pgn)
     while current_game is not None:
@@ -41,10 +43,13 @@ def main():
         for move in current_game.mainline_moves():
             board.push(move)
             # CONTINUE HERE - work with the board to check if it's reached the
-            # desired type of endgame, using endgame_specs.
+            # desired type of endgame, using endgame_specs. Also can use the functions of
+            # the stockfish instance, which has been initialized without issue.
         current_game = chess.pgn.read_game(pgn)
-
 
 
 if __name__ == "__main__":
     main()
+    
+    
+    

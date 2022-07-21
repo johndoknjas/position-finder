@@ -9,13 +9,16 @@ def all_legal_pieces(str_of_pieces):
 
 def get_specs_from_user():
     endgame_specs = []
-    for i in range(16):
+    
+    for i in range(17):
         pieces = ""
         try:
-            if i < 8:
-                pieces = input("Enter what you want in row " + str(i+1) + ": ")
+            if i == 0:
+                pieces = input("Enter pieces which must exist, but can be anywhere: ")
+            elif i <= 8:
+                pieces = input("Enter what you want in row " + str(i) + ": ")
             else:
-                pieces = input("Enter what you want in column " + chr(ord('a') + (i-8)))
+                pieces = input("Enter what you want in column " + chr(ord('a') + (i-9)))
         except SyntaxError:
             pieces = ""
         if not all_legal_pieces(pieces):
@@ -24,13 +27,14 @@ def get_specs_from_user():
     return endgame_specs
 
 def main():
-    endgame_specs = get_specs_from_user # list of 16 strings.
-        # Indices 0-7 for rows 1-8.
-        # Indices 8-15 for columns a-h.
+    endgame_specs = get_specs_from_user # list of 17 strings.
+        # Index 0 is for pieces that have to exist, but can be placed anywhere.
+        # Indices 1-8 for rows 1-8.
+        # Indices 9-16 for columns a-h.
         # Each string will store all the piece(s) and pawn(s) the user wants
         # in that particular row/column. E.g.: "PKp" means to have a white pawn,
         # white king, and black pawn in the column/row that string represents.
-    pgn = open("big database.pgn") # CONTINUE HERE - Change to over 2200 one
+    pgn = open("big database over 2200.pgn")
     current_game = chess.pgn.read_game(pgn)
     while current_game is not None:
         board = current_game.board()

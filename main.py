@@ -46,7 +46,7 @@ def are_pieces_in_board(stockfish, pieces, file=None, row=None):
     
     initial_row_iterator = 1 if not row else row
     end_row_iterator = 9 if not row else initial_row_iterator + 1
-    initial_col_iterator = 1 if not file else (ord(file) - ord('a'))
+    initial_col_iterator = 1 if not file else (1 + ord(file) - ord('a'))
     end_col_iterator = 9 if not file else initial_col_iterator + 1
     
     for piece in pieces:
@@ -54,13 +54,14 @@ def are_pieces_in_board(stockfish, pieces, file=None, row=None):
         for row in range(initial_row_iterator, end_row_iterator):
             for col in range(initial_col_iterator, end_col_iterator):
                 square = chr(ord('a') + col - 1) + str(row)
-                try: # TEST
+                try:
                     if stockfish.get_what_is_on_square(square) is not None:
                         if stockfish.get_what_is_on_square(square).value == piece:
                             found_piece = True
                             break
                 except:
                     print("PROBLEM: " + square)
+                    print("File: " + file)
             if found_piece:
                 break
         if not found_piece:

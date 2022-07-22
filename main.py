@@ -34,7 +34,7 @@ def num_pieces_in_fen(fen):
     for c in fen:
         if c in piece_chars:
             counter += 1
-        elif c == 'w' or c == 'b':
+        elif c == ' ':
             break
     return counter
 

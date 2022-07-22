@@ -1,7 +1,6 @@
 import chess.pgn
 from stockfish import Stockfish
-import random
-from random import shuffle
+import time
 
 piece_chars = ['P', 'p', 'N', 'n', 'B', 'b', 'R', 'r', 'Q', 'q', 'K', 'k']
 
@@ -69,6 +68,7 @@ def are_pieces_in_board(stockfish, pieces, file=None, row=None):
     return True
 
 def main():
+    output_filename = str(time.time()) + ".txt"
     num_pieces = int(input("How many pieces in this endgame: "))
     endgame_specs = get_specs_from_user() # list of 17 strings.
         # Index 0 is for pieces that have to exist, but can be placed anywhere.
@@ -121,6 +121,9 @@ def main():
             print("current output string:\n" + output_string)
             print("Games parsed: " + str(num_games_parsed))
             print("Hit_counter = " + str(hit_counter))
+            f = open(output_filename, "w")
+            f.write(output_string)
+            f.close()
 
 
 if __name__ == "__main__":

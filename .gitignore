@@ -1,3 +1,4 @@
 *.pgn
 *.pgi
 stockfish*
+*.ini

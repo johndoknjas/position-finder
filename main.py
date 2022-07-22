@@ -81,41 +81,23 @@ def main():
     pgn = open("big database over 2200.pgn")
     num_games_parsed = 0
     hit_counter = 0
-    game_offsets = []
-    while_loop_counter = 0
-    while True:
-        while_loop_counter += 1
-        if while_loop_counter % 1000 == 0:
-            print(while_loop_counter)
-        
-        current_game = pgn.tell()
-        if chess.pgn.read_headers(pgn) is None:
-            break
-        
-        game_offsets.append(current_game)
-        """
+    output_string = "" # Will store the games which feature the desired type of endgame.
+    while True:        
         current_game = chess.pgn.read_game(pgn)
         if current_game is not None:
-            games.append(current_game)
-        else:
-            break
-        """
-        
-    print("Done")
-    
-    shuffle(game_offsets)
-
-    for current_game_offset in game_offsets:
-        pgn.seek(current_game_offset)
-        current_game = chess.pgn.read_game(pgn)
-        board = current_game.board()
+            board = current_game.board()
+        move_counter = 0
         for move in current_game.mainline_moves():
-            position_works = True
-            if num_pieces_in_fen(board.fen()) < num_pieces:
+            board.push(move)
+            move_counter += 1
+            if move_counter < 40:
+                continue
+            elif num_pieces_in_fen(board.fen()) < num_pieces:
                 break # Too few pieces to ever reach the desired endgame now.
             elif num_pieces_in_fen(board.fen()) == num_pieces:
                 # Right number of pieces, so now check if there's a match.
                 stockfish.set_fen_position(board.fen())
+                position_works = True
                 for i in range(17):
                     if i == 0:
                         file = None
@@ -130,20 +112,15 @@ def main():
                         position_works = False
                         break
                 if position_works:
-                    print(board.fen())
-                    print("\n")
-                    print(board)
-                    print("\nfrom:")
-                    print(current_game)
-                    print("\n\n")
+                    output_string += (board.fen() + "\n" + str(board) + "\nfrom:\n"
+                                      + str(current_game) + "\n\n----------\n\n")
                     hit_counter += 1
                     break # On to the next game
-            board.push(move)
         num_games_parsed += 1
-        if (num_games_parsed % 100 == 0):
+        if (num_games_parsed % 50 == 0):
+            print("current output string:\n" + output_string)
             print("Games parsed: " + str(num_games_parsed))
-            if hit_counter > 0:
-                print("Hit_counter = " + str(hit_counter))
+            print("Hit_counter = " + str(hit_counter))
 
 
 if __name__ == "__main__":

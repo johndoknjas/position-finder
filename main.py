@@ -1,5 +1,7 @@
 import chess.pgn
 from stockfish import Stockfish
+import random
+from random import shuffle
 
 piece_chars = ['P', 'p', 'N', 'n', 'B', 'b', 'R', 'r', 'Q', 'q', 'K', 'k']
 
@@ -78,8 +80,34 @@ def main():
     stockfish = Stockfish(path="stockfish")
     pgn = open("big database over 2200.pgn")
     num_games_parsed = 0
-    current_game = chess.pgn.read_game(pgn)
-    while current_game is not None:
+    hit_counter = 0
+    game_offsets = []
+    while_loop_counter = 0
+    while True:
+        while_loop_counter += 1
+        if while_loop_counter % 1000 == 0:
+            print(while_loop_counter)
+        
+        current_game = pgn.tell()
+        if chess.pgn.read_headers(pgn) is None:
+            break
+        
+        game_offsets.append(current_game)
+        """
+        current_game = chess.pgn.read_game(pgn)
+        if current_game is not None:
+            games.append(current_game)
+        else:
+            break
+        """
+        
+    print("Done")
+    
+    shuffle(game_offsets)
+
+    for current_game_offset in game_offsets:
+        pgn.seek(current_game_offset)
+        current_game = chess.pgn.read_game(pgn)
         board = current_game.board()
         for move in current_game.mainline_moves():
             position_works = True
@@ -108,11 +136,14 @@ def main():
                     print("\nfrom:")
                     print(current_game)
                     print("\n\n")
+                    hit_counter += 1
                     break # On to the next game
             board.push(move)
-        current_game = chess.pgn.read_game(pgn)
         num_games_parsed += 1
-        print("Games parsed: " + str(num_games_parsed))
+        if (num_games_parsed % 100 == 0):
+            print("Games parsed: " + str(num_games_parsed))
+            if hit_counter > 0:
+                print("Hit_counter = " + str(hit_counter))
 
 
 if __name__ == "__main__":

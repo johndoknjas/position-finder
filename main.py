@@ -80,9 +80,9 @@ def main():
     num_games_parsed = 0
     current_game = chess.pgn.read_game(pgn)
     while current_game is not None:
-        game_works = True
         board = current_game.board()
         for move in current_game.mainline_moves():
+            position_works = True
             if num_pieces_in_fen(board.fen()) < num_pieces:
                 break # Too few pieces to ever reach the desired endgame now.
             elif num_pieces_in_fen(board.fen()) == num_pieces:
@@ -99,14 +99,15 @@ def main():
                         file = chr(ord('a') + (i - 9))
                         row = None
                     if not are_pieces_in_board(stockfish, endgame_specs[i], file, row):
-                        game_works = False
+                        position_works = False
                         break
-                if game_works:
-                    print(board.fen()) # TEST
-                    # CONTINUE HERE - Was testing by running the program, 32 pieces,
-                    # only requirement being a N on row 3, but no fens get printed out.
-                    # Solve this bug, then if there are no other bugs, may be all good
-                    # to go after that.
+                if position_works:
+                    print(board.fen())
+                    print("\n")
+                    print(board)
+                    print("\nfrom:")
+                    print(current_game)
+                    print("\n\n")
                     break # On to the next game
             board.push(move)
         current_game = chess.pgn.read_game(pgn)

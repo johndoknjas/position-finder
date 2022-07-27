@@ -70,6 +70,7 @@ def are_pieces_in_board(stockfish, pieces, file=None, row=None):
 
 def main():
     output_filename = str(time.time()) + ".txt"
+    database_name = input("Enter the name of the pgn database you are using: ")
     num_pieces = int(input("How many pieces in this endgame: "))
     endgame_specs = get_specs_from_user() # list of 17 strings.
         # Index 0 is for pieces that have to exist, but can be placed anywhere.
@@ -79,7 +80,7 @@ def main():
         # in that particular row/column. E.g.: "PKp" means to have a white pawn,
         # white king, and black pawn in the column/row that string represents.
     stockfish = Stockfish(path="stockfish")
-    pgn = open("big database over 2200.pgn")
+    pgn = open(database_name)
     num_games_parsed = 0
     hit_counter = 0
     output_string = "" # Will store the games which feature the desired type of endgame.

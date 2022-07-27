@@ -80,7 +80,7 @@ def main():
         # in that particular row/column. E.g.: "PKp" means to have a white pawn,
         # white king, and black pawn in the column/row that string represents.
     stockfish = Stockfish(path="stockfish")
-    pgn = open(database_name)
+    pgn = open(database_name, 'r', errors='replace')
     num_games_parsed = 0
     hit_counter = 0
     output_string = "" # Will store the games which feature the desired type of endgame.

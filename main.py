@@ -84,8 +84,15 @@ def main():
     )
     if game_to_start_search_at == "":
         game_to_start_search_at = None
-    name_of_player_as_white_in_first_game = None if game_to_start_search_at is None else game_to_start_search_at.split()[0]
-    name_of_player_as_black_in_first_game = None if game_to_start_search_at is None else game_to_start_search_at.split()[1]
+    move_to_start_in_each_game = int(
+        input("Enter the move to start searching for matching positions in each game: ")
+    )
+    name_of_player_as_white_in_first_game = (
+        None if game_to_start_search_at is None else game_to_start_search_at.split()[0]
+    )
+    name_of_player_as_black_in_first_game = (
+        None if game_to_start_search_at is None else game_to_start_search_at.split()[1]
+    )
     database_name = input("Enter the name of the pgn database you are using: ")
     num_pieces = int(input("How many pieces in this endgame: "))
     endgame_specs = get_endgame_specs_from_user()  # list of 17 strings.
@@ -100,24 +107,26 @@ def main():
     num_games_parsed = 0
     hit_counter = 0
     output_string = (
-        ""
-    )  # Will store the games which feature the desired type of endgame.
-    reached_first_game_for_search_in_DB = (game_to_start_search_at == None)
+        ""  # Will store the games which feature the desired type of endgame.
+    )
+    reached_first_game_for_search_in_DB = game_to_start_search_at == None
     while True:
         if not reached_first_game_for_search_in_DB:
             headers = chess.pgn.read_headers(pgn)
-            if (name_of_player_as_white_in_first_game in headers.get("White", "?") and
-                name_of_player_as_black_in_first_game in headers.get("Black", "?")):
+            if name_of_player_as_white_in_first_game in headers.get(
+                "White", "?"
+            ) and name_of_player_as_black_in_first_game in headers.get("Black", "?"):
                 reached_first_game_for_search_in_DB = True
             continue
         current_game = chess.pgn.read_game(pgn)
-        if current_game is not None:
-            board = current_game.board()
+        if current_game is None:
+            break
+        board = current_game.board()
         move_counter = 0
         for move in current_game.mainline_moves():
             board.push(move)
             move_counter += 1
-            if move_counter < 40:
+            if move_counter < move_to_start_in_each_game:
                 continue
             elif num_pieces_in_fen(board.fen()) < num_pieces:
                 break  # Too few pieces to ever reach the desired endgame now.
@@ -150,7 +159,7 @@ def main():
                     hit_counter += 1
                     break  # On to the next game
         num_games_parsed += 1
-        if num_games_parsed % 50 == 0:
+        if num_games_parsed % 20 == 0:
             print("current output string:\n" + output_string)
             print("Games parsed: " + str(num_games_parsed))
             print("Hit_counter = " + str(hit_counter))

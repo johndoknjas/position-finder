@@ -72,6 +72,23 @@ def are_pieces_in_board(stockfish, pieces, file=None, row=None):
     return True
 
 
+def does_endgame_satisfy_specs(stockfish, fen, endgame_specs):
+    stockfish.set_fen_position(fen)
+    for i in range(17):
+        if i == 0:
+            file = None
+            row = None
+        elif i <= 8:
+            file = None
+            row = i
+        else:
+            file = chr(ord("a") + (i - 9))
+            row = None
+        if not are_pieces_in_board(stockfish, endgame_specs[i], file, row):
+            return False
+    return True
+
+
 def main():
     output_filename = str(time.time()) + ".txt"
     type_of_position = input(
@@ -86,6 +103,7 @@ def main():
         game_to_start_search_at = None
     move_to_start_in_each_game = int(
         input("Enter the move to start searching for matching positions in each game: ")
+        or "0"
     )
     name_of_player_as_white_in_first_game = (
         None if game_to_start_search_at is None else game_to_start_search_at.split()[0]
@@ -94,21 +112,28 @@ def main():
         None if game_to_start_search_at is None else game_to_start_search_at.split()[1]
     )
     database_name = input("Enter the name of the pgn database you are using: ")
-    num_pieces = int(input("How many pieces in this endgame: "))
-    endgame_specs = get_endgame_specs_from_user()  # list of 17 strings.
+    num_pieces = (
+        int(input("How many pieces in this endgame: "))
+        if type_of_position == "endgame"
+        else None
+    )
+    endgame_specs = (
+        get_endgame_specs_from_user() if type_of_position == "endgame" else None
+    )
+    # list of 17 strings.
     # Index 0 is for pieces that have to exist, but can be placed anywhere.
     # Indices 1-8 for rows 1-8.
     # Indices 9-16 for columns a-h.
     # Each string will store all the piece(s) and pawn(s) the user wants
     # in that particular row/column. E.g.: "PKp" means to have a white pawn,
     # white king, and black pawn in the column/row that string represents.
+
     stockfish = Stockfish(path="stockfish")
     pgn = open(database_name, "r", errors="replace")
     num_games_parsed = 0
     hit_counter = 0
-    output_string = (
-        ""  # Will store the games which feature the desired type of endgame.
-    )
+    output_string = ""
+    # Will store the games which feature the desired type of endgame.
     reached_first_game_for_search_in_DB = game_to_start_search_at == None
     while True:
         if not reached_first_game_for_search_in_DB:
@@ -126,28 +151,18 @@ def main():
         for move in current_game.mainline_moves():
             board.push(move)
             move_counter += 1
-            if move_counter < move_to_start_in_each_game:
+            if move_counter < move_to_start_in_each_game * 2:
                 continue
-            elif num_pieces_in_fen(board.fen()) < num_pieces:
-                break  # Too few pieces to ever reach the desired endgame now.
-            elif num_pieces_in_fen(board.fen()) == num_pieces:
-                # Right number of pieces, so now check if there's a match.
-                stockfish.set_fen_position(board.fen())
-                position_works = True
-                for i in range(17):
-                    if i == 0:
-                        file = None
-                        row = None
-                    elif i <= 8:
-                        file = None
-                        row = i
-                    else:
-                        file = chr(ord("a") + (i - 9))
-                        row = None
-                    if not are_pieces_in_board(stockfish, endgame_specs[i], file, row):
-                        position_works = False
-                        break
-                if position_works:
+            if type_of_position == "endgame":
+                num_pieces_in_current_fen = num_pieces_in_fen(board.fen())
+                if num_pieces_in_current_fen < num_pieces:
+                    break  # Too few pieces to ever reach the desired endgame now.
+                if (
+                    num_pieces_in_current_fen == num_pieces
+                    and does_endgame_satisfy_specs(
+                        stockfish, board.fen(), endgame_specs
+                    )
+                ):
                     output_string += (
                         board.fen()
                         + "\n"
@@ -158,6 +173,10 @@ def main():
                     )
                     hit_counter += 1
                     break  # On to the next game
+            elif type_of_position == "top moves":
+                # CONTINUE HERE - Write code for this.
+                pass
+
         num_games_parsed += 1
         if num_games_parsed % 20 == 0:
             print("current output string:\n" + output_string)

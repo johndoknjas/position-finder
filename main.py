@@ -17,17 +17,14 @@ def get_endgame_specs_from_user():
     endgame_specs = []
     for i in range(17):
         pieces = ""
-        try:
-            if i == 0:
-                pieces = input("Enter pieces which must exist, but can be anywhere: ")
-            elif i <= 8:
-                pieces = input("Enter what you want in row " + str(i) + ": ")
-            else:
-                pieces = input(
-                    "Enter what you want in column " + chr(ord("a") + (i - 9)) + ": "
-                )
-        except SyntaxError:
-            pieces = ""
+        if i == 0:
+            pieces = input("Enter pieces which must exist, but can be anywhere: ")
+        elif i <= 8:
+            pieces = input("Enter what you want in row " + str(i) + ": ")
+        else:
+            pieces = input(
+                "Enter what you want in column " + chr(ord("a") + (i - 9)) + ": "
+            )
         if not all_legal_pieces(pieces):
             raise RuntimeError("Illegal chars entered for pieces")
         endgame_specs.append(pieces)
@@ -82,13 +79,13 @@ def main():
     )
     if type_of_position not in ["endgame", "top moves"]:
         raise ValueError("Did not enter a valid type of position to look for.")
-    game_to_start_search_at = None
-    try:
-        game_to_start_search_at = input(
-            "To start the search in the DB at a certain game, enter the last name of White, then the last name of Black. To not do this, just press enter: "
-        )
-    except SyntaxError:
+    game_to_start_search_at = input(
+        "To start the search in the DB after a certain game, enter the last name of White, then the last name of Black. To not do this, just press enter: "
+    )
+    if game_to_start_search_at == "":
         game_to_start_search_at = None
+    name_of_player_as_white_in_first_game = None if game_to_start_search_at is None else game_to_start_search_at.split()[0]
+    name_of_player_as_black_in_first_game = None if game_to_start_search_at is None else game_to_start_search_at.split()[1]
     database_name = input("Enter the name of the pgn database you are using: ")
     num_pieces = int(input("How many pieces in this endgame: "))
     endgame_specs = get_endgame_specs_from_user()  # list of 17 strings.
@@ -105,7 +102,14 @@ def main():
     output_string = (
         ""
     )  # Will store the games which feature the desired type of endgame.
+    reached_first_game_for_search_in_DB = (game_to_start_search_at == None)
     while True:
+        if not reached_first_game_for_search_in_DB:
+            headers = chess.pgn.read_headers(pgn)
+            if (name_of_player_as_white_in_first_game in headers.get("White", "?") and
+                name_of_player_as_black_in_first_game in headers.get("Black", "?")):
+                reached_first_game_for_search_in_DB = True
+            continue
         current_game = chess.pgn.read_game(pgn)
         if current_game is not None:
             board = current_game.board()

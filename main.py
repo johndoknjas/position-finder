@@ -108,7 +108,7 @@ def satisfies_bound(move_dict, bound, is_lower_bound):
 def does_position_satisfy_top_moves_specs(stockfish, fen, bounds):
     # Also allow for if it's Black to move (so if the evals are negative, in Black's favour).
     stockfish.set_fen_position(fen)
-    depth_increments = [8, 13, 16]
+    depth_increments = [8, 13]
     eval_multiplier = 1 if "w" in fen else -1
     # In order to work with evaluations that are relative to the player whose turn it is,
     # rather than positive being white and negative being black.
@@ -161,7 +161,7 @@ the last name of White, then the last name of Black. To not do this, just press 
         # in that particular row/column. E.g.: "PKp" means to have a white pawn,
         # white king, and black pawn in the column/row that string represents.
     elif type_of_position == "top moves":
-        print("For each of the following, just press enter if you don't want a bound.")
+        print("For each of the following, type 'None' or just press enter if you don't want a bound.")
         bounds_as_strings = []
         bounds_as_strings.append(input("Enter the lower bound the top move's eval: "))
         bounds_as_strings.append(input("Upper bound for top move's eval: "))
@@ -174,7 +174,7 @@ the last name of White, then the last name of Black. To not do this, just press 
         # first spot in the list, etc.
         
         for current_bound_as_string in bounds_as_strings:
-            if current_bound_as_string == "":
+            if current_bound_as_string in ["", "None"]:
                 bounds.append(None)
             else:
                 bounds.append(float(current_bound_as_string))
@@ -233,15 +233,14 @@ the last name of White, then the last name of Black. To not do this, just press 
                         + "\nfrom:\n"
                         + str(current_game)
                         + "\nTop moves:\n"
-                        + stockfish.get_top_moves(2)
+                        + ', '.join(str(d) for d in stockfish.get_top_moves(2))
                         + "\n\n----------\n\n"
                     )
                     hit_counter += 1
-                    break  # On to the next game
         # End of for loop
         
         num_games_parsed += 1
-        if num_games_parsed % 20 == 0:
+        if num_games_parsed % 20 == 0 or True: # CONTINUE HERE - remove or True, just for testing
             print("current output string:\n" + output_string)
             print("Games parsed: " + str(num_games_parsed))
             print("Hit_counter = " + str(hit_counter))

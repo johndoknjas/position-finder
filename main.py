@@ -73,7 +73,7 @@ def are_pieces_in_board(stockfish, pieces, file=None, row=None):
 
 
 def does_endgame_satisfy_specs(stockfish, fen, endgame_specs):
-    stockfish.set_fen_position(fen)
+    stockfish.set_fen_position(fen, send_ucinewgame_token = False)
     for i in range(17):
         if i == 0:
             file = None
@@ -107,8 +107,8 @@ def satisfies_bound(move_dict, bound, is_lower_bound):
 
 def does_position_satisfy_top_moves_specs(stockfish, fen, bounds):
     # Also allow for if it's Black to move (so if the evals are negative, in Black's favour).
-    stockfish.set_fen_position(fen)
-    depth_increments = [8, 13]
+    stockfish.set_fen_position(fen, send_ucinewgame_token = False)
+    depth_increments = [8, 12, 15]
     eval_multiplier = 1 if "w" in fen else -1
     # In order to work with evaluations that are relative to the player whose turn it is,
     # rather than positive being white and negative being black.
@@ -240,7 +240,7 @@ the last name of White, then the last name of Black. To not do this, just press 
         # End of for loop
         
         num_games_parsed += 1
-        if num_games_parsed % 20 == 0 or True: # CONTINUE HERE - remove or True, just for testing
+        if num_games_parsed % 20 == 0:
             print("current output string:\n" + output_string)
             print("Games parsed: " + str(num_games_parsed))
             print("Hit_counter = " + str(hit_counter))

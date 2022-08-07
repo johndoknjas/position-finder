@@ -88,9 +88,48 @@ def does_endgame_satisfy_specs(stockfish, fen, endgame_specs):
             return False
     return True
 
-def does_position_satisfy_top_moves_specs(stockfish, fen):
-    pass
+def satisfies_bound(move_dict, bound, is_lower_bound):
+    # bound is in centipawn evaluation, as a decimal (e.g., 2.17). Or None.
+    # For move_dict, if the "Centipawn" key has a value, it will already have been
+    # converted to decimal form (so nothing like 37 for a 0.37 evaluation).
+    if bound is None:
+        return True
+    if is_lower_bound:
+        if move_dict["Mate"] is not None:
+            return move_dict["Mate"] > 0
+        else:
+            return move_dict["Centipawn"] >= bound
+    else:
+        if move_dict["Mate"] is not None:
+            return move_dict["Mate"] < 0
+        else:
+            return move_dict["Centipawn"] <= bound
 
+def does_position_satisfy_top_moves_specs(stockfish, fen, bounds):
+    # Also allow for if it's Black to move (so if the evals are negative, in Black's favour).
+    stockfish.set_fen_position(fen)
+    depth_increments = [8, 13, 16]
+    eval_multiplier = 1 if "w" in fen else -1
+    # In order to work with evaluations that are relative to the player whose turn it is,
+    # rather than positive being white and negative being black.
+    for depth in depth_increments:
+        stockfish.set_depth(depth)
+        top_moves = stockfish.get_top_moves(2)
+        if len(top_moves) != 2:
+            return False     
+        for i in range(len(top_moves)):
+            if top_moves[i]["Centipawn"] is not None:
+                top_moves[i]["Centipawn"] *= (eval_multiplier * 0.01)
+            if top_moves[i]["Mate"] is not None:
+                top_moves[i]["Mate"] *= eval_multiplier
+
+        # Now see if each of the bounds is satisfied:
+        if (not satisfies_bound(top_moves[0], bounds[0], True) or
+            not satisfies_bound(top_moves[0], bounds[1], False) or
+            not satisfies_bound(top_moves[1], bounds[2], True) or
+            not satisfies_bound(top_moves[1], bounds[3], False)):
+            return False
+    return True
 
 def main():
     output_filename = str(time.time()) + ".txt"
@@ -121,6 +160,24 @@ the last name of White, then the last name of Black. To not do this, just press 
         # Each string will store all the piece(s) and pawn(s) the user wants
         # in that particular row/column. E.g.: "PKp" means to have a white pawn,
         # white king, and black pawn in the column/row that string represents.
+    elif type_of_position == "top moves":
+        print("For each of the following, just press enter if you don't want a bound.")
+        bounds_as_strings = []
+        bounds_as_strings.append(input("Enter the lower bound the top move's eval: "))
+        bounds_as_strings.append(input("Upper bound for top move's eval: "))
+        bounds_as_strings.append(input("Lower bound for the second top move's eval: "))
+        bounds_as_strings.append(input("Upper bound for the second top move's eval: "))
+        
+        bounds = [] 
+        # Will be used later in the main while loop. This list will store 4 floats,
+        # representing the info above (in that order). So, lower bound for the top move in the
+        # first spot in the list, etc.
+        
+        for current_bound_as_string in bounds_as_strings:
+            if current_bound_as_string == "":
+                bounds.append(None)
+            else:
+                bounds.append(float(current_bound_as_string))
 
     stockfish = Stockfish(path="stockfish")
     pgn = open(database_name, "r", errors="replace")
@@ -168,9 +225,21 @@ the last name of White, then the last name of Black. To not do this, just press 
                     break  # On to the next game
 
             elif type_of_position == "top moves":
-                # CONTINUE HERE - Write code for this.
-                pass
-
+                if does_position_satisfy_top_moves_specs(stockfish, board.fen(), bounds):
+                    output_string += (
+                        board.fen()
+                        + "\n"
+                        + str(board)
+                        + "\nfrom:\n"
+                        + str(current_game)
+                        + "\nTop moves:\n"
+                        + stockfish.get_top_moves(2)
+                        + "\n\n----------\n\n"
+                    )
+                    hit_counter += 1
+                    break  # On to the next game
+        # End of for loop
+        
         num_games_parsed += 1
         if num_games_parsed % 20 == 0:
             print("current output string:\n" + output_string)

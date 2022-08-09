@@ -259,8 +259,8 @@ the last name of White, then the last name of Black. To not do this, just press 
                     hit_counter += 1
             
             elif type_of_position == "skip move":
-                if (does_position_satisfy_bounds(stockfish, board.fen(), bounds[0:2]) 
-                    and
+                if (does_position_satisfy_bounds(stockfish, board.fen(), bounds[0:2]) and
+                    stockfish.is_fen_valid(switch_whose_turn(board.fen())) and
                     does_position_satisfy_bounds(stockfish, switch_whose_turn(board.fen()), 
                                                  bounds[2:4])):
                     output_string += (board_str_rep + "\n\n----------\n\n")

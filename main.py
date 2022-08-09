@@ -105,7 +105,12 @@ def satisfies_bound(move_dict, bound, is_lower_bound):
         else:
             return move_dict["Centipawn"] <= bound
 
-def does_position_satisfy_top_moves_specs(stockfish, fen, bounds):
+def does_position_satisfy_bounds(stockfish, fen, bounds):
+    # bounds is a list, where the 0th element is the lower bound for the first move,
+    # the 1st element is the upper bound for the first move, etc (for however many
+    # top moves). It may just be the one top move, or it could be 1 more, 2 more, etc.
+    # len(bounds) will be even.
+    
     # Also allow for if it's Black to move (so if the evals are negative, in Black's favour).
     stockfish.set_fen_position(fen, send_ucinewgame_token = False)
     depth_increments = [8, 12, 15]
@@ -114,9 +119,9 @@ def does_position_satisfy_top_moves_specs(stockfish, fen, bounds):
     # rather than positive being white and negative being black.
     for depth in depth_increments:
         stockfish.set_depth(depth)
-        top_moves = stockfish.get_top_moves(2)
-        if len(top_moves) != 2:
-            return False     
+        top_moves = stockfish.get_top_moves(len(bounds) / 2)
+        if len(top_moves) != len(bounds) / 2:
+            return False
         for i in range(len(top_moves)):
             if top_moves[i]["Centipawn"] is not None:
                 top_moves[i]["Centipawn"] *= (eval_multiplier * 0.01)
@@ -124,11 +129,11 @@ def does_position_satisfy_top_moves_specs(stockfish, fen, bounds):
                 top_moves[i]["Mate"] *= eval_multiplier
 
         # Now see if each of the bounds is satisfied:
-        if (not satisfies_bound(top_moves[0], bounds[0], True) or
-            not satisfies_bound(top_moves[0], bounds[1], False) or
-            not satisfies_bound(top_moves[1], bounds[2], True) or
-            not satisfies_bound(top_moves[1], bounds[3], False)):
-            return False
+        for i in range(len(bounds)):
+            is_lower_bound = (i % 2) == 0
+            if not satisfies_bound(top_moves[int(i/2)], bounds[i], is_lower_bound):
+                return False
+    # End of outer for loop - if control makes it here, return True.
     return True
 
 def get_bounds_from_user(input_messages):
@@ -143,6 +148,12 @@ def get_bounds_from_user(input_messages):
         else:
             bounds.append(float(current_bound_as_string))
     return bounds
+
+def switch_whose_turn(fen):
+    if "w" in fen:
+        return fen.replace("w", "b")
+    else:
+        return fen.replace(" b ", " w ")
 
 def main():
     output_filename = str(time.time()) + ".txt"
@@ -186,7 +197,7 @@ the last name of White, then the last name of Black. To not do this, just press 
     elif type_of_position == "skip move":
         bounds = get_bounds_from_user(["Enter the lower bound eval for a position: ",
                                        "Upper bound for a position: ",
-                                       "Lower bound for the position with move skipped : ",
+                                       "Lower bound eval (relative to opponent this time) for the position with move skipped : ",
                                        "Upper bound for the position with move skipped : "])
         # Again, like in the elif above, here bounds will be used later in the main loop.
 
@@ -209,6 +220,7 @@ the last name of White, then the last name of Black. To not do this, just press 
         current_game = chess.pgn.read_game(pgn)
         if current_game is None:
             break
+        current_game_as_str = str(current_game)
 
         board = current_game.board()
         move_counter = 0
@@ -217,6 +229,14 @@ the last name of White, then the last name of Black. To not do this, just press 
             move_counter += 1
             if move_counter < move_to_start_in_each_game * 2:
                 continue
+            board_str_rep = (
+                board.fen()
+                + "\n"
+                + str(board)
+                + "\nfrom:\n"
+                + current_game_as_str
+            )
+
             if type_of_position == "endgame":
                 num_pieces_in_current_fen = num_pieces_in_fen(board.fen())
                 if num_pieces_in_current_fen < num_pieces_desired_endgame:
@@ -224,34 +244,32 @@ the last name of White, then the last name of Black. To not do this, just press 
                 if (num_pieces_in_current_fen == num_pieces_desired_endgame and 
                     does_endgame_satisfy_specs(stockfish, board.fen(), endgame_specs)
                 ):
-                    output_string += (
-                        board.fen()
-                        + "\n"
-                        + str(board)
-                        + "\nfrom:\n"
-                        + str(current_game)
-                        + "\n\n----------\n\n"
-                    )
+                    output_string += (board_str_rep + "\n\n----------\n\n")
                     hit_counter += 1
                     break  # On to the next game
 
             elif type_of_position == "top moves":
-                if does_position_satisfy_top_moves_specs(stockfish, board.fen(), bounds):
+                if does_position_satisfy_bounds(stockfish, board.fen(), bounds):
                     output_string += (
-                        board.fen()
-                        + "\n"
-                        + str(board)
-                        + "\nfrom:\n"
-                        + str(current_game)
+                        board_str_rep
                         + "\nTop moves:\n"
                         + ', '.join(str(d) for d in stockfish.get_top_moves(2))
                         + "\n\n----------\n\n"
                     )
                     hit_counter += 1
+            
+            elif type_of_position == "skip move":
+                if (does_position_satisfy_bounds(stockfish, board.fen(), bounds[0:2]) 
+                    and
+                    does_position_satisfy_bounds(stockfish, switch_whose_turn(board.fen()), 
+                                                 bounds[2:4])):
+                    output_string += (board_str_rep + "\n\n----------\n\n")
+                    hit_counter += 1
+                
         # End of for loop
         
         num_games_parsed += 1
-        if num_games_parsed % 20 == 0:
+        if num_games_parsed % 20 == 0 or True: # CONTINUE HERE - OR TRUE
             print("current output string:\n" + output_string)
             print("Games parsed: " + str(num_games_parsed))
             print("Hit_counter = " + str(hit_counter))

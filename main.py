@@ -131,10 +131,23 @@ def does_position_satisfy_top_moves_specs(stockfish, fen, bounds):
             return False
     return True
 
+def get_bounds_from_user(input_messages):
+    bounds_as_strings = []
+    print("For each of the following, type 'None' or just press enter if you don't want a bound.")
+    for message in input_messages:
+        bounds_as_strings.append(input(message))
+    bounds = []
+    for current_bound_as_string in bounds_as_strings:
+        if current_bound_as_string in ["", "None"]:
+            bounds.append(None)
+        else:
+            bounds.append(float(current_bound_as_string))
+    return bounds
+
 def main():
     output_filename = str(time.time()) + ".txt"
     
-    type_of_position = input("Enter 'endgame' or 'top moves' for the type of position to find: ")
+    type_of_position = input("Enter 'endgame', 'top moves', or 'skip move' for the type of position to find: ")
     
     database_name = input("Enter the name of the pgn database you are using: ")
 
@@ -160,24 +173,22 @@ the last name of White, then the last name of Black. To not do this, just press 
         # Each string will store all the piece(s) and pawn(s) the user wants
         # in that particular row/column. E.g.: "PKp" means to have a white pawn,
         # white king, and black pawn in the column/row that string represents.
-    elif type_of_position == "top moves":
-        print("For each of the following, type 'None' or just press enter if you don't want a bound.")
-        bounds_as_strings = []
-        bounds_as_strings.append(input("Enter the lower bound the top move's eval: "))
-        bounds_as_strings.append(input("Upper bound for top move's eval: "))
-        bounds_as_strings.append(input("Lower bound for the second top move's eval: "))
-        bounds_as_strings.append(input("Upper bound for the second top move's eval: "))
         
-        bounds = [] 
-        # Will be used later in the main while loop. This list will store 4 floats,
+    elif type_of_position == "top moves":
+        bounds = get_bounds_from_user(["Enter the lower bound the top move's eval: ",
+                                       "Upper bound for top move's eval: ",
+                                       "Lower bound for the second top move's eval: ",
+                                       "Upper bound for the second top move's eval: "])
+        # bounds will be used later in the main while loop. This list will store 4 floats,
         # representing the info above (in that order). So, lower bound for the top move in the
         # first spot in the list, etc.
-        
-        for current_bound_as_string in bounds_as_strings:
-            if current_bound_as_string in ["", "None"]:
-                bounds.append(None)
-            else:
-                bounds.append(float(current_bound_as_string))
+    
+    elif type_of_position == "skip move":
+        bounds = get_bounds_from_user(["Enter the lower bound eval for a position: ",
+                                       "Upper bound for a position: ",
+                                       "Lower bound for the position with move skipped : ",
+                                       "Upper bound for the position with move skipped : "])
+        # Again, like in the elif above, here bounds will be used later in the main loop.
 
     stockfish = Stockfish(path="stockfish")
     pgn = open(database_name, "r", errors="replace")

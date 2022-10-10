@@ -1,2 +1,2 @@
 # position-finder
-Finds games featuring a given description (such as an endgame).
+Finds games which at some point satisfy certain piece/pawn configurations (as specified by the user).

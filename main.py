@@ -222,12 +222,18 @@ def main():
     if not database_name.endswith('.pgn'):
         database_name += '.pgn'
 
-    game_to_start_search_at = input("""To start the search in the DB after a certain game, enter 
-the last name of White, then a space, then the last name of Black. To not do this, just press enter: """)
+    game_to_start_search_after: Union[int,str] = input("""To start the search in the DB after a certain game, enter 
+the last name of White, then a space, then the last name of Black, then a space, then the year. 
+To not do this, just press enter: """)
     
-    if game_to_start_search_at != "":
-        name_of_player_as_white_in_first_game = game_to_start_search_at.split()[0]
-        name_of_player_as_black_in_first_game = game_to_start_search_at.split()[1]
+    if game_to_start_search_after != "":
+        name_of_player_as_white_in_first_game = game_to_start_search_after.split()[0]
+        name_of_player_as_black_in_first_game = game_to_start_search_after.split()[1]
+        date_of_first_game = game_to_start_search_after.split()[2]
+    else:
+        print()
+        game_to_start_search_after = int(input("""To start the search after a particular game number in the database,
+enter it here. Otherwise, just press enter: """) or "0")
 
     move_to_start_in_each_game = int(
         input("Enter the move to start searching for matching positions in each game: ")
@@ -269,18 +275,27 @@ the last name of White, then a space, then the last name of Black. To not do thi
     # Will store the games which feature the desired type of endgame.
     secondary_hit_counter = 0 # used for underpromotion feature
     secondary_output_string = "" # used for underpromotion feature
-    reached_first_game_for_search_in_DB = game_to_start_search_at == ""
+    reached_first_game_for_search_in_DB = not game_to_start_search_after
     while True:
         num_games_parsed += 1
         if not reached_first_game_for_search_in_DB:
             headers = chess.pgn.read_headers(pgn)
-            if name_of_player_as_white_in_first_game in headers.get(
-                "White", "?"
-            ) and name_of_player_as_black_in_first_game in headers.get("Black", "?"):
-                reached_first_game_for_search_in_DB = True
+            reached_first_game_for_search_in_DB = (
+                (   
+                    name_of_player_as_white_in_first_game in headers.get("White", "?") and 
+                    name_of_player_as_black_in_first_game in headers.get("Black", "?") and
+                    date_of_first_game in headers.get("Date")
+                ) 
+                if type(game_to_start_search_after) is str
+                else 
+                (
+                    num_games_parsed >= game_to_start_search_after
+                )
+            )
+            if reached_first_game_for_search_in_DB:
                 print("Done skipping games")
             if num_games_parsed % 20000 == 0:
-                print ("Skipped " + str(num_games_parsed))
+                print("Skipped " + str(num_games_parsed))
             continue
         current_game = chess.pgn.read_game(pgn)
         if current_game is None:

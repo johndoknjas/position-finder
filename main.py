@@ -372,18 +372,21 @@ enter it here. Otherwise, just press enter: """) or "0")
                 print("#Games parsed: " + str(num_games_parsed))
 
                 f = open(output_filename + "-games where underpromotion is best move.txt", "w")
-                f.write(secondary_output_string)
+                f.write(secondary_output_string + "#Games parsed: " + str(num_games_parsed) + 
+                        "\nHit counter: " + str(secondary_hit_counter) + "\n\n")
                 f.close()
 
                 f = open(output_filename + "-games where underpromotion is best and player missed it.txt", "w")
-                f.write(output_string)
+                f.write(output_string + "#Games parsed: " + str(num_games_parsed) + 
+                        "\nHit counter: " + str(hit_counter) + "\n\n")
                 f.close()
             else:
                 print("Games found matching requirements:\n" + output_string)
                 print("#Games parsed: " + str(num_games_parsed))
                 print("Hit_counter = " + str(hit_counter))
                 f = open(output_filename + ".txt", "w")
-                f.write(output_string)
+                f.write(output_string + "#Games parsed: " + str(num_games_parsed) + 
+                        "\nHit counter: " + str(hit_counter) + "\n\n")
                 f.close()
 
 

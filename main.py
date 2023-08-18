@@ -1,19 +1,48 @@
 import chess.pgn
 from stockfish import Stockfish
 import time
-from typing import *
+from typing import Tuple, Optional, Union, List
 
-piece_chars = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
+PIECE_CHARS = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
 
-def all_legal_pieces(str_of_pieces):
-    global piece_chars
-    for c in str_of_pieces:
-        if c not in piece_chars:
-            return False
-    return True
+class Piece_Quantities:
+    """Stores data representing piece chars that must be present, and (optionally) in exactly
+       what quantities."""
 
-def get_endgame_specs_from_user():
-    endgame_specs = []
+    def __init__(self, requirements: str) -> None:
+        self._requirements = requirements
+        self._curr_index = 0
+        self._is_mutable = False
+
+    def are_all_read(self) -> bool:
+        return self._curr_index >= len(self._requirements)
+    
+    def consume_current_requirement(self) -> Tuple[str, Optional[int]]:
+        assert not self._peek_curr_char().isdigit()
+        piece_char = self._consume_curr_char()
+        quantity: Optional[int] = None
+        if not self.are_all_read() and self._peek_curr_char().isdigit():
+            quantity = int(self._consume_curr_char())
+        return (piece_char, quantity)
+    
+    def _peek_curr_char(self) -> str:
+        assert not self.are_all_read()
+        return self._requirements[self._curr_index]
+    
+    def _consume_curr_char(self) -> str:
+        if not self._is_mutable:
+            raise RuntimeError("This Piece_Quantities object is immutable - call the `create_mutable_copy` function to obtain a mutable copy.")
+        c = self._peek_curr_char()
+        self._curr_index += 1
+        return c
+    
+def create_mutable_copy(obj: Piece_Quantities) -> Piece_Quantities:
+    copy_obj = Piece_Quantities(obj._requirements)
+    copy_obj._is_mutable = True
+    return copy_obj
+
+def get_endgame_specs_from_user() -> List[Piece_Quantities]:
+    endgame_specs: List[Piece_Quantities] = []
     for i in range(18):
         pieces = ""
         if i == 0:
@@ -26,16 +55,15 @@ def get_endgame_specs_from_user():
             pieces = input(
                 "Enter what you want in column " + chr(ord("a") + (i - 9)) + ": "
             )
-        if not all_legal_pieces(pieces):
+        if not all(c in PIECE_CHARS or c.isdigit() for c in pieces):
             raise RuntimeError("Illegal chars entered for pieces")
-        endgame_specs.append(pieces)
+        endgame_specs.append(Piece_Quantities(pieces))
     return endgame_specs
 
 def num_pieces_in_fen(fen):
     counter = 0
-    global piece_chars
     for c in fen:
-        if c in piece_chars:
+        if c in PIECE_CHARS:
             counter += 1
         elif c == " ":
             break
@@ -61,7 +89,7 @@ def is_piece_in_board(stockfish: Stockfish, piece_char, row_start, row_end_exclu
                 print("PROBLEM: " + square)
     return num_of_this_piece is not None and hit_counter == num_of_this_piece
 
-def are_pieces_in_board(stockfish: Stockfish, pieces, file=None, row=None, all=True):
+def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, file=None, row=None, all=True):
     """
         - Pre-condition: the stockfish object must be set to the position in question.
         - `all` = True means the function returns true iff all pieces specified are present.
@@ -76,18 +104,21 @@ def are_pieces_in_board(stockfish: Stockfish, pieces, file=None, row=None, all=T
     end_row_iterator = 9 if not row else initial_row_iterator + 1
     initial_col_iterator = 1 if not file else (1 + ord(file) - ord("a"))
     end_col_iterator = 9 if not file else initial_col_iterator + 1
-    for piece in pieces:
-        piece_in_board = is_piece_in_board(stockfish, piece, initial_row_iterator, end_row_iterator, 
+    pieces = create_mutable_copy(pieces)
+    while not pieces.are_all_read():
+        piece_requirement = pieces.consume_current_requirement()
+        piece_in_board = is_piece_in_board(stockfish, piece_requirement[0], 
+                                           initial_row_iterator, end_row_iterator, 
                                            initial_col_iterator, end_col_iterator,
-                                           num_of_this_piece=None)
+                                           num_of_this_piece=piece_requirement[1])
         if all and not piece_in_board:
             return False
         if not all and piece_in_board:
             return True
     return all
 
-def does_position_satisfy_specs(stockfish, fen, position_specs):
-    # position_specs must be a list of 17 strings.
+def does_position_satisfy_specs(stockfish: Stockfish, fen, position_specs: List[Piece_Quantities]):
+    # position_specs must be a list of 17 `Piece_Quantities` objects.
         # Index 0 is for pieces that have to exist, but can be placed anywhere.
         # Indices 1-8 for rows 1-8.
         # Indices 9-16 for columns a-h.
@@ -169,8 +200,8 @@ def is_underpromotion_best(stockfish, fen) -> Union[bool, str]:
     # In order to work with evaluations that are relative to the player whose turn it is,
     # rather than positive being white and negative being black.
 
-    if ("w" in fen and not are_pieces_in_board(stockfish, ["P"], row=7) or
-        "w" not in fen and not are_pieces_in_board(stockfish, ["p"], row=2)):
+    if (("w" in fen and not are_pieces_in_board(stockfish, Piece_Quantities("P"), row=7)) or
+        ("w" not in fen and not are_pieces_in_board(stockfish, Piece_Quantities("p"), row=2))):
         return False # Since a promotion is not even possible.
 
     for depth in depth_increments:
@@ -288,15 +319,16 @@ enter it here. Otherwise, just press enter: """) or "0")
         num_pieces_desired_endgame = int(user_input) if (user_input := 
                                                          input("Exactly how many pieces in this endgame: ")
                                                         ) else None
-        endgame_specs = get_endgame_specs_from_user()
-        # list of 17 strings.
+        endgame_specs: List[Piece_Quantities] = get_endgame_specs_from_user()
+        # list of 17 requirements for pieces present.
         # Index 0 is for pieces that have to exist, but can be placed anywhere.
         # Indices 1-8 for rows 1-8.
         # Indices 9-16 for columns a-h.
         # Index 17 is for pieces that mustn't exist in the position.
-        # Each string will store all the piece(s) and pawn(s) the user wants
-        # in that particular row/column. E.g.: "PKp" means to have a white pawn,
-        # white king, and black pawn in the column/row that string represents.
+        # Each element will store all the piece(s) and pawn(s) the user wants
+        # in that particular row/column, and in potentially what exact quantities. 
+        # E.g.: "PK2p" (for the requirements) means to have a white pawn, white king, and 2 black pawns in the 
+        # column/row that string represents.
         
     elif type_of_position == "top moves":
         bounds = get_bounds_from_user(["Enter the lower bound the top move's eval: ",

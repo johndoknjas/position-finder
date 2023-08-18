@@ -41,6 +41,26 @@ def num_pieces_in_fen(fen):
             break
     return counter
 
+def is_piece_in_board(stockfish: Stockfish, piece_char, row_start, row_end_exclude, 
+                      col_start, col_end_exclude, num_of_this_piece: Optional[int] = None):
+    """If the optional num_of_this_piece param is left as None, then the function returns true iff
+       at least one of the specified piece char is in the board.
+       Otherwise, exactly the specified number of the piece must be present."""
+    
+    hit_counter = 0
+    for row in range(row_start, row_end_exclude):
+        for col in range(col_start, col_end_exclude):
+            square = chr(ord("a") + col - 1) + str(row)
+            try:
+                if ((square_contents := stockfish.get_what_is_on_square(square)) is not None and 
+                    square_contents.value == piece_char):
+                    if num_of_this_piece is None:
+                        return True
+                    hit_counter += 1
+            except:
+                print("PROBLEM: " + square)
+    return num_of_this_piece is not None and hit_counter == num_of_this_piece
+
 def are_pieces_in_board(stockfish: Stockfish, pieces, file=None, row=None, all=True):
     """
         - Pre-condition: the stockfish object must be set to the position in question.
@@ -56,27 +76,13 @@ def are_pieces_in_board(stockfish: Stockfish, pieces, file=None, row=None, all=T
     end_row_iterator = 9 if not row else initial_row_iterator + 1
     initial_col_iterator = 1 if not file else (1 + ord(file) - ord("a"))
     end_col_iterator = 9 if not file else initial_col_iterator + 1
-
     for piece in pieces:
-        found_piece = False
-
-        for row in range(initial_row_iterator, end_row_iterator):
-            for col in range(initial_col_iterator, end_col_iterator):
-                square = chr(ord("a") + col - 1) + str(row)
-                try:
-                    if stockfish.get_what_is_on_square(square) is not None:
-                        if stockfish.get_what_is_on_square(square).value == piece:
-                            found_piece = True
-                            break
-                except:
-                    print("PROBLEM: " + square)
-                    print("File: " + file)
-            if found_piece:
-                break
-
-        if all and not found_piece:
+        piece_in_board = is_piece_in_board(stockfish, piece, initial_row_iterator, end_row_iterator, 
+                                           initial_col_iterator, end_col_iterator,
+                                           num_of_this_piece=None)
+        if all and not piece_in_board:
             return False
-        if not all and found_piece:
+        if not all and piece_in_board:
             return True
     return all
 

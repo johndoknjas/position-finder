@@ -164,7 +164,7 @@ def satisfies_bound(move_dict: dict, bound: Optional[float], is_lower_bound: boo
         else:
             return move_dict["Centipawn"] <= bound
 
-def does_position_satisfy_bounds(stockfish: Stockfish, fen: str, bounds: List[float]) -> bool:
+def does_position_satisfy_bounds(stockfish: Stockfish, fen: str, bounds: List[Optional[float]]) -> bool:
     """bounds is a list, where the 0th element is the lower bound for the first move,
        the 1st element is the upper bound for the first move, etc (for however many
        top moves). It may just be the one top move, or it could be 1 more, 2 more, etc.
@@ -178,7 +178,7 @@ def does_position_satisfy_bounds(stockfish: Stockfish, fen: str, bounds: List[fl
     # rather than positive being white and negative being black.
     for depth in depth_increments:
         stockfish.set_depth(depth)
-        top_moves: List[dict] = stockfish.get_top_moves(len(bounds) / 2)
+        top_moves: List[dict] = stockfish.get_top_moves(int(len(bounds) / 2))
         if len(top_moves) != len(bounds) / 2:
             return False
         for i in range(len(top_moves)):
@@ -293,7 +293,7 @@ def print_output_data(type_of_position: str, output_string: str, secondary_outpu
                 "\nHit counter: " + str(hit_counter) + "\n\n")
         f.close()
 
-def main():
+def main() -> None:
     output_filename = str(int(time.time()))
     
     type_of_position = input("""Enter 'endgame', 'top moves', 'skip move', or 'underpromotion' for the type of position to find: """)
@@ -307,6 +307,7 @@ the last name of White, then a space, then the last name of Black, then a space,
 To not do this, just press enter: """)
     
     if game_to_start_search_after != "":
+        assert type(game_to_start_search_after) is str
         name_of_player_as_white_in_first_game = game_to_start_search_after.split()[0]
         name_of_player_as_black_in_first_game = game_to_start_search_after.split()[1]
         date_of_first_game = game_to_start_search_after.split()[2]
@@ -363,16 +364,19 @@ enter it here. Otherwise, just press enter: """) or "0")
     while True:
         if not reached_first_game_for_search_in_DB:
             headers = chess.pgn.read_headers(pgn)
+            assert headers is not None
+            game_date = headers.get("Date")
+            assert type(game_date) is str
             reached_first_game_for_search_in_DB = (
                 (   
                     name_of_player_as_white_in_first_game in headers.get("White", "?") and 
                     name_of_player_as_black_in_first_game in headers.get("Black", "?") and
-                    date_of_first_game in headers.get("Date")
+                    date_of_first_game in game_date
                 ) 
                 if type(game_to_start_search_after) is str
                 else 
                 (
-                    num_games_parsed >= game_to_start_search_after
+                    num_games_parsed >= game_to_start_search_after # type: ignore
                 )
             )
             if reached_first_game_for_search_in_DB:

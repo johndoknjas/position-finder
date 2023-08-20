@@ -1,5 +1,5 @@
 import chess.pgn
-from stockfish import Stockfish
+from models import Stockfish
 import time
 from typing import Tuple, Optional, Union, List
 

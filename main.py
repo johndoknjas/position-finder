@@ -373,10 +373,10 @@ enter it here. Otherwise, just press enter: """) or "0")
                     name_of_player_as_black_in_first_game in headers.get("Black", "?") and
                     date_of_first_game in game_date
                 ) 
-                if type(game_to_start_search_after) is str
+                if isinstance(game_to_start_search_after, str)
                 else 
                 (
-                    num_games_parsed >= game_to_start_search_after # type: ignore
+                    num_games_parsed >= game_to_start_search_after
                 )
             )
             if reached_first_game_for_search_in_DB:

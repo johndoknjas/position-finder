@@ -9,37 +9,42 @@ class Piece_Quantities:
     """Stores data representing piece chars that must be present, and (optionally) in exactly
        what quantities."""
 
-    def __init__(self, requirements: str) -> None:
-        self._requirements = requirements
+    def __init__(self, requirements_string: str) -> None:
+        self._requirements_string = requirements_string
         self._curr_index = 0
-        self._is_mutable = False
 
-    def are_all_read(self) -> bool:
-        return self._curr_index >= len(self._requirements)
+    def get_requirements(self) -> List[Tuple[str, Optional[int]]]:
+        requirements: List[Tuple[str, Optional[int]]] = []
+        while not self._are_all_read():
+            requirements.append(self._consume_current_requirement())
+        self._rollback_parsing()
+        return requirements
     
-    def consume_current_requirement(self) -> Tuple[str, Optional[int]]:
+    def _rollback_parsing(self) -> None:
+        """Next requirement read after this will be the first one."""
+        self._curr_index = 0
+
+    def _are_all_read(self) -> bool:
+        return self._curr_index >= len(self._requirements_string)
+    
+    def _consume_current_requirement(self) -> Tuple[str, Optional[int]]:
+        """On each call, this function will increment self._curr_index."""
         assert not self._peek_curr_char().isdigit()
         piece_char = self._consume_curr_char()
         quantity: Optional[int] = None
-        if not self.are_all_read() and self._peek_curr_char().isdigit():
+        if not self._are_all_read() and self._peek_curr_char().isdigit():
             quantity = int(self._consume_curr_char())
         return (piece_char, quantity)
     
     def _peek_curr_char(self) -> str:
-        assert not self.are_all_read()
-        return self._requirements[self._curr_index]
+        assert not self._are_all_read()
+        return self._requirements_string[self._curr_index]
     
     def _consume_curr_char(self) -> str:
-        if not self._is_mutable:
-            raise RuntimeError("This Piece_Quantities object is immutable - call the `create_mutable_copy` function to obtain a mutable copy.")
+        """On each call, this function will increment self._curr_index."""
         c = self._peek_curr_char()
         self._curr_index += 1
         return c
-    
-def create_mutable_copy(obj: Piece_Quantities) -> Piece_Quantities:
-    copy_obj = Piece_Quantities(obj._requirements)
-    copy_obj._is_mutable = True
-    return copy_obj
 
 def get_endgame_specs_from_user() -> List[Piece_Quantities]:
     endgame_specs: List[Piece_Quantities] = []
@@ -104,13 +109,11 @@ def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, file=Non
     end_row_iterator = 9 if not row else initial_row_iterator + 1
     initial_col_iterator = 1 if not file else (1 + ord(file) - ord("a"))
     end_col_iterator = 9 if not file else initial_col_iterator + 1
-    pieces = create_mutable_copy(pieces)
-    while not pieces.are_all_read():
-        piece_requirement = pieces.consume_current_requirement()
-        piece_in_board = is_piece_in_board(stockfish, piece_requirement[0], 
+    for requirement in pieces.get_requirements():
+        piece_in_board = is_piece_in_board(stockfish, requirement[0], 
                                            initial_row_iterator, end_row_iterator, 
                                            initial_col_iterator, end_col_iterator,
-                                           num_of_this_piece=piece_requirement[1])
+                                           num_of_this_piece=requirement[1])
         if all and not piece_in_board:
             return False
         if not all and piece_in_board:

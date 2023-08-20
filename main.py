@@ -3,7 +3,7 @@ from stockfish import Stockfish
 import time
 from typing import Tuple, Optional, Union, List
 
-PIECE_CHARS = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
+PIECE_CHARS: List[str] = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
 
 class Piece_Quantities:
     """Stores data representing piece chars that must be present, and (optionally) in exactly
@@ -65,7 +65,7 @@ def get_endgame_specs_from_user() -> List[Piece_Quantities]:
         endgame_specs.append(Piece_Quantities(pieces))
     return endgame_specs
 
-def num_pieces_in_fen(fen):
+def num_pieces_in_fen(fen: str) -> int:
     counter = 0
     for c in fen:
         if c in PIECE_CHARS:
@@ -74,8 +74,8 @@ def num_pieces_in_fen(fen):
             break
     return counter
 
-def is_piece_in_board(stockfish: Stockfish, piece_char, row_start, row_end_exclude, 
-                      col_start, col_end_exclude, num_of_this_piece: Optional[int] = None):
+def is_piece_in_board(stockfish: Stockfish, piece_char: str, row_start: int, row_end_exclude: int, 
+                      col_start: int, col_end_exclude: int, num_of_this_piece: Optional[int] = None) -> bool:
     """If the optional num_of_this_piece param is left as None, then the function returns true iff
        at least one of the specified piece char is in the board.
        Otherwise, exactly the specified number of the piece must be present."""
@@ -94,7 +94,8 @@ def is_piece_in_board(stockfish: Stockfish, piece_char, row_start, row_end_exclu
                 print("PROBLEM: " + square)
     return num_of_this_piece is not None and hit_counter == num_of_this_piece
 
-def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, file=None, row=None, all=True):
+def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, 
+                        file: Optional[str] = None, row: Optional[int] = None, all: bool = True) -> bool:
     """
         - Pre-condition: the stockfish object must be set to the position in question.
         - `all` = True means the function returns true iff all pieces specified are present.
@@ -120,7 +121,7 @@ def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, file=Non
             return True
     return all
 
-def does_position_satisfy_specs(stockfish: Stockfish, fen, position_specs: List[Piece_Quantities]):
+def does_position_satisfy_specs(stockfish: Stockfish, fen: str, position_specs: List[Piece_Quantities]) -> bool:
     # position_specs must be a list of 17 `Piece_Quantities` objects.
         # Index 0 is for pieces that have to exist, but can be placed anywhere.
         # Indices 1-8 for rows 1-8.
@@ -146,10 +147,10 @@ def does_position_satisfy_specs(stockfish: Stockfish, fen, position_specs: List[
 
     return True
 
-def satisfies_bound(move_dict, bound, is_lower_bound):
-    # bound is in centipawn evaluation, as a decimal (e.g., 2.17). Or None.
-    # For move_dict, if the "Centipawn" key has a value, it will already have been
-    # converted to decimal form (so nothing like 37 for a 0.37 evaluation).
+def satisfies_bound(move_dict: dict, bound: Optional[float], is_lower_bound: bool) -> bool:
+    """bound is in centipawn evaluation, as a float (e.g., 2.17) or None.
+       For move_dict, if the "Centipawn" key has a value, it will already have been
+       converted to decimal form (so nothing like 37 for a 0.37 evaluation)."""
     if bound is None:
         return True
     if is_lower_bound:
@@ -163,11 +164,11 @@ def satisfies_bound(move_dict, bound, is_lower_bound):
         else:
             return move_dict["Centipawn"] <= bound
 
-def does_position_satisfy_bounds(stockfish, fen, bounds):
-    # bounds is a list, where the 0th element is the lower bound for the first move,
-    # the 1st element is the upper bound for the first move, etc (for however many
-    # top moves). It may just be the one top move, or it could be 1 more, 2 more, etc.
-    # len(bounds) will be even.
+def does_position_satisfy_bounds(stockfish: Stockfish, fen: str, bounds: List[float]) -> bool:
+    """bounds is a list, where the 0th element is the lower bound for the first move,
+       the 1st element is the upper bound for the first move, etc (for however many
+       top moves). It may just be the one top move, or it could be 1 more, 2 more, etc.
+       len(bounds) will be even."""
     
     # Also allow for if it's Black to move (so if the evals are negative, in Black's favour).
     stockfish.set_fen_position(fen, send_ucinewgame_token = False)
@@ -177,7 +178,7 @@ def does_position_satisfy_bounds(stockfish, fen, bounds):
     # rather than positive being white and negative being black.
     for depth in depth_increments:
         stockfish.set_depth(depth)
-        top_moves = stockfish.get_top_moves(len(bounds) / 2)
+        top_moves: List[dict] = stockfish.get_top_moves(len(bounds) / 2)
         if len(top_moves) != len(bounds) / 2:
             return False
         for i in range(len(top_moves)):
@@ -194,7 +195,7 @@ def does_position_satisfy_bounds(stockfish, fen, bounds):
     # End of outer for loop - if control makes it here, return True.
     return True
 
-def is_underpromotion_best(stockfish, fen) -> Union[bool, str]:
+def is_underpromotion_best(stockfish: Stockfish, fen: str) -> Union[bool, str]:
     # Returns False if so. Otherwise, returns the underpromotion move (e.g., e7e8r).
 
     stockfish.set_fen_position(fen, send_ucinewgame_token = False)
@@ -209,7 +210,7 @@ def is_underpromotion_best(stockfish, fen) -> Union[bool, str]:
 
     for depth in depth_increments:
         stockfish.set_depth(depth)
-        top_moves = stockfish.get_top_moves(2)
+        top_moves: List[dict] = stockfish.get_top_moves(2)
         if len(top_moves) != 2:
             return False
         for i in range(len(top_moves)):
@@ -244,12 +245,12 @@ def is_underpromotion_best(stockfish, fen) -> Union[bool, str]:
 
     return top_moves[0]["Move"]
 
-def get_bounds_from_user(input_messages):
+def get_bounds_from_user(input_messages: List[str]) -> List[Optional[float]]:
     bounds_as_strings = []
     print("For each of the following, type 'None' or just press enter if you don't want a bound.")
     for message in input_messages:
         bounds_as_strings.append(input(message))
-    bounds = []
+    bounds: List[Optional[float]] = []
     for current_bound_as_string in bounds_as_strings:
         if current_bound_as_string in ["", "None"]:
             bounds.append(None)
@@ -257,14 +258,15 @@ def get_bounds_from_user(input_messages):
             bounds.append(float(current_bound_as_string))
     return bounds
 
-def switch_whose_turn(fen):
+def switch_whose_turn(fen: str) -> str:
     if "w" in fen:
         return fen.replace("w", "b")
     else:
         return fen.replace(" b ", " w ")
     
-def print_output_data(type_of_position, output_string, secondary_output_string, hit_counter,
-                      secondary_hit_counter, num_games_parsed, output_filename):
+def print_output_data(type_of_position: str, output_string: str, secondary_output_string: str, 
+                      hit_counter: int, secondary_hit_counter: int, num_games_parsed: int, 
+                      output_filename: str):
     if type_of_position == "underpromotion":
         print("Games found where underpromotion best:\n" + secondary_output_string + "\n")
         print("Games found where underpromotion best and player missed it:\n" 

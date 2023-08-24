@@ -97,6 +97,9 @@ class Stockfish:
             stderr=subprocess.STDOUT,
         )
 
+        self._board_visual_white_perspective: Optional[str] = None
+        self._board_visual_black_perspective: Optional[str] = None
+
         self._has_quit_command_been_sent: bool = False
 
         self._set_stockfish_version()
@@ -215,6 +218,8 @@ class Stockfish:
         self.info = ""
 
     def _put(self, command: str) -> None:
+        if command.startswith("position fen") or command == "flip":
+            self._board_visual_white_perspective, self._board_visual_black_perspective = None, None
         if not self._stockfish.stdin:
             raise BrokenPipeError()
         if self._stockfish.poll() is None and not self._has_quit_command_been_sent:
@@ -395,6 +400,12 @@ class Stockfish:
               a   b   c   d   e   f   g   h
             ```
         """
+
+        if perspective_white and self._board_visual_white_perspective is not None:
+            return self._board_visual_white_perspective
+        if not perspective_white and self._board_visual_black_perspective is not None:
+            return self._board_visual_black_perspective
+
         self._put("d")
         board_rep_lines: List[str] = []
         count_lines: int = 0
@@ -424,6 +435,12 @@ class Stockfish:
         self._discard_remaining_stdout_lines("Checkers")
         # "Checkers" is in the last line outputted by Stockfish for the "d" command.
         board_rep = "\n".join(board_rep_lines) + "\n"
+
+        if perspective_white:
+            self._board_visual_white_perspective = board_rep
+        else:
+            self._board_visual_black_perspective = board_rep
+
         return board_rep
 
     def get_fen_position(self) -> str:

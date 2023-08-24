@@ -84,14 +84,11 @@ def is_piece_in_board(stockfish: Stockfish, piece_char: str, row_start: int, row
     for row in range(row_start, row_end_exclude):
         for col in range(col_start, col_end_exclude):
             square = chr(ord("a") + col - 1) + str(row)
-            try:
-                if ((square_contents := stockfish.get_what_is_on_square(square)) is not None and 
-                    square_contents.value == piece_char):
-                    if num_of_this_piece is None:
-                        return True
-                    hit_counter += 1
-            except:
-                print("PROBLEM: " + square)
+            if ((square_contents := stockfish.get_what_is_on_square(square)) is not None and
+                square_contents.value == piece_char):
+                if num_of_this_piece is None:
+                    return True
+                hit_counter += 1
     return num_of_this_piece is not None and hit_counter == num_of_this_piece
 
 def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, 

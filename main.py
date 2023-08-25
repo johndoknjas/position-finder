@@ -4,14 +4,42 @@ import time
 from typing import Tuple, Optional, Union, List
 
 PIECE_CHARS: List[str] = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
+FILE_CHARS: List[str] = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 
+def file_char_to_int(file_char: str) -> int:
+    assert file_char in FILE_CHARS
+    return 1 + ord(file_char.lower()) - ord('a')
+
+def file_int_to_char(file_int: int) -> str:
+    assert 1 <= file_int <= 8
+    return chr(ord('a') + file_int - 1)
+
+# continue here - to now use this class, you can (optionally) send requirements strings that are prepended with:
+    # "row [1-8]:"
+    # "file ['a'-'h']:"
+    # "['a'-'h'][1-8]:"    for a single square
+# Note that for some other code in this file, you currently treat an end row/col by exclusion, not inclusion.
+# This class treats with inclusion.
 class Piece_Quantities:
     """Stores data representing piece chars that must be present, and (optionally) in exactly
        what quantities."""
 
     def __init__(self, requirements_string: str) -> None:
-        self._requirements_string = requirements_string
+        self._requirements_string = ''.join(requirements_string.split())
         self._curr_index = 0
+        self._start_row, self._start_file = 1, 1
+        self._end_row, self._end_file = 8, 8
+        if len(substrings := self._requirements_string.split(':')) == 2:
+            board_area = substrings[0].lower()
+            self._requirements_string = substrings[1]
+            if board_area.startswith('row'):
+                self._start_row = self._end_row = int(board_area[-1])
+            elif board_area.startswith('file'):
+                self._start_file = self._end_file = file_char_to_int(board_area[-1])
+            else:
+                assert len(board_area) == 2
+                self._start_file = self._end_file = file_char_to_int(board_area[0])
+                self._start_row = self._end_row = int(board_area[1])
 
     def get_requirements(self) -> List[Tuple[str, Optional[int]]]:
         requirements: List[Tuple[str, Optional[int]]] = []
@@ -20,6 +48,22 @@ class Piece_Quantities:
         self._rollback_parsing()
         return requirements
     
+    def start_row(self) -> int:
+        """Returns the first row to consider."""
+        return self._start_row
+
+    def end_row(self) -> int:
+        """Returns the last row to consider."""
+        return self._end_row
+
+    def start_file(self) -> int:
+        """Returns the first file to consider, as an int (1-8)."""
+        return self._start_file
+
+    def end_file(self) -> int:
+        """Returns the last file to consider, as an int (1-8)."""
+        return self._end_file
+
     def _rollback_parsing(self) -> None:
         """Next requirement read after this will be the first one."""
         self._curr_index = 0
@@ -58,7 +102,7 @@ def get_endgame_specs_from_user() -> List[Piece_Quantities]:
             pieces = input("Enter pieces which mustn't exist in the position: ")
         else:
             pieces = input(
-                "Enter what you want in column " + chr(ord("a") + (i - 9)) + ": "
+                "Enter what you want in column " + file_int_to_char(i - 8) + ": "
             )
         if not all(c in PIECE_CHARS or c.isdigit() for c in pieces):
             raise RuntimeError("Illegal chars entered for pieces")
@@ -83,7 +127,7 @@ def is_piece_in_board(stockfish: Stockfish, piece_char: str, row_start: int, row
     hit_counter = 0
     for row in range(row_start, row_end_exclude):
         for col in range(col_start, col_end_exclude):
-            square = chr(ord("a") + col - 1) + str(row)
+            square = file_int_to_char(col) + str(row)
             if ((square_contents := stockfish.get_what_is_on_square(square)) is not None and
                 square_contents.value == piece_char):
                 if num_of_this_piece is None:
@@ -105,7 +149,7 @@ def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities,
 
     initial_row_iterator = 1 if not row else row
     end_row_iterator = 9 if not row else initial_row_iterator + 1
-    initial_col_iterator = 1 if not file else (1 + ord(file) - ord("a"))
+    initial_col_iterator = 1 if not file else file_char_to_int(file)
     end_col_iterator = 9 if not file else initial_col_iterator + 1
     for requirement in pieces.get_requirements():
         piece_in_board = is_piece_in_board(stockfish, requirement[0], 
@@ -134,7 +178,7 @@ def does_position_satisfy_specs(stockfish: Stockfish, fen: str, position_specs: 
             file = None
             row = i
         else:
-            file = chr(ord("a") + (i - 9))
+            file = file_int_to_char(i - 8)
             row = None
 
         if i == 17 and are_pieces_in_board(stockfish, position_specs[i], file, row, all=False):

@@ -16,8 +16,11 @@ def file_int_to_char(file_int: int) -> str:
 
 # continue here - to now use this class, you can (optionally) send requirements strings that are prepended with:
     # "row [1-8]:"
-    # "file ['a'-'h']:"
-    # "['a'-'h'][1-8]:"    for a single square
+    # "file ['a'-'h']:"    either case fine
+    # "['a'-'h'][1-8]:"    for a single square        either case fine
+# To signify requirements that should be excluded, make the first char of the requirements string be either
+# ~ or !.
+
 # Note that for some other code in this file, you currently treat an end row/col by exclusion, not inclusion.
 # This class treats with inclusion.
 class Piece_Quantities:
@@ -29,6 +32,8 @@ class Piece_Quantities:
         self._curr_index = 0
         self._start_row, self._start_file = 1, 1
         self._end_row, self._end_file = 8, 8
+        self._should_exclude = self._requirements_string.startswith(('~', '!'))
+        self._requirements_string = self._requirements_string.lstrip('~!')
         if len(substrings := self._requirements_string.split(':')) == 2:
             board_area = substrings[0].lower()
             self._requirements_string = substrings[1]
@@ -63,6 +68,10 @@ class Piece_Quantities:
     def end_file(self) -> int:
         """Returns the last file to consider, as an int (1-8)."""
         return self._end_file
+
+    def should_exclude(self) -> bool:
+        """Returns whether the pieces specified by this object must not be present in the specified area."""
+        return self._should_exclude
 
     def _rollback_parsing(self) -> None:
         """Next requirement read after this will be the first one."""

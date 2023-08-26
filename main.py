@@ -4,11 +4,11 @@ import time
 from typing import Tuple, Optional, Union, List
 
 PIECE_CHARS: List[str] = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
-FILE_CHARS: List[str] = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 
 def file_char_to_int(file_char: str) -> int:
-    assert file_char in FILE_CHARS
-    return 1 + ord(file_char.lower()) - ord('a')
+    file_char = file_char.lower()
+    assert 'a' <= file_char <= 'h'
+    return 1 + ord(file_char) - ord('a')
 
 def file_int_to_char(file_int: int) -> str:
     assert 1 <= file_int <= 8
@@ -119,13 +119,7 @@ def get_endgame_specs_from_user() -> List[Piece_Quantities]:
     return endgame_specs
 
 def num_pieces_in_fen(fen: str) -> int:
-    counter = 0
-    for c in fen:
-        if c in PIECE_CHARS:
-            counter += 1
-        elif c == " ":
-            break
-    return counter
+    return sum(1 for c in fen.split(' ')[0] if c in PIECE_CHARS)
 
 def is_piece_in_board(stockfish: Stockfish, piece_char: str, row_start: int, row_end_exclude: int, 
                       col_start: int, col_end_exclude: int, num_of_this_piece: Optional[int] = None) -> bool:

@@ -101,35 +101,25 @@ class Piece_Quantities:
 
 def get_endgame_specs_from_user() -> List[Piece_Quantities]:
     endgame_specs: List[Piece_Quantities] = []
-    for i in range(18):
-        pieces = ""
-        if i == 0:
-            pieces = input("Enter pieces which must exist, but can be anywhere: ")
-        elif i <= 8:
-            pieces = input("Enter what you want in row " + str(i) + ": ")
-        elif i == 17:
-            pieces = input("Enter pieces which mustn't exist in the position: ")
+    while True:
+        piece_requirements = input("Enter a piece requirement string, or just press enter to stop: ")
+        if piece_requirements != "":
+            endgame_specs.append(Piece_Quantities(piece_requirements))
         else:
-            pieces = input(
-                "Enter what you want in column " + file_int_to_char(i - 8) + ": "
-            )
-        if not all(c in PIECE_CHARS or c.isdigit() for c in pieces):
-            raise RuntimeError("Illegal chars entered for pieces")
-        endgame_specs.append(Piece_Quantities(pieces))
-    return endgame_specs
+            return endgame_specs
 
 def num_pieces_in_fen(fen: str) -> int:
     return sum(1 for c in fen.split(' ')[0] if c in PIECE_CHARS)
 
-def is_piece_in_board(stockfish: Stockfish, piece_char: str, row_start: int, row_end_exclude: int, 
-                      col_start: int, col_end_exclude: int, num_of_this_piece: Optional[int] = None) -> bool:
+def is_piece_in_board(stockfish: Stockfish, piece_char: str, row_start: int, row_end: int,
+                      col_start: int, col_end: int, num_of_this_piece: Optional[int] = None) -> bool:
     """If the optional num_of_this_piece param is left as None, then the function returns true iff
        at least one of the specified piece char is in the board.
        Otherwise, exactly the specified number of the piece must be present."""
     
     hit_counter = 0
-    for row in range(row_start, row_end_exclude):
-        for col in range(col_start, col_end_exclude):
+    for row in range(row_start, row_end+1):
+        for col in range(col_start, col_end+1):
             square = file_int_to_char(col) + str(row)
             if ((square_contents := stockfish.get_what_is_on_square(square)) is not None and
                 square_contents.value == piece_char):
@@ -138,26 +128,21 @@ def is_piece_in_board(stockfish: Stockfish, piece_char: str, row_start: int, row
                 hit_counter += 1
     return num_of_this_piece is not None and hit_counter == num_of_this_piece
 
-def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, 
-                        file: Optional[str] = None, row: Optional[int] = None, all: bool = True) -> bool:
+def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, all: bool = True) -> bool:
     """
         - Pre-condition: the stockfish object must be set to the position in question.
         - `all` = True means the function returns true iff all pieces specified are present.
           If 'all' = False, the function returns true iff at least one of the specified pieces is present.
     """
 
-    # If values aren't sent in for file or row, just check if each piece exists
-    # anywhere on stockfish's current board.
-    # Otherwise, check if the pieces exist in the specified file/row.
-
-    initial_row_iterator = 1 if not row else row
-    end_row_iterator = 9 if not row else initial_row_iterator + 1
-    initial_col_iterator = 1 if not file else file_char_to_int(file)
-    end_col_iterator = 9 if not file else initial_col_iterator + 1
+    initial_row = pieces.start_row()
+    end_row = pieces.end_row()
+    initial_file = pieces.start_file()
+    end_file = pieces.end_file()
     for requirement in pieces.get_requirements():
         piece_in_board = is_piece_in_board(stockfish, requirement[0], 
-                                           initial_row_iterator, end_row_iterator, 
-                                           initial_col_iterator, end_col_iterator,
+                                           initial_row, end_row,
+                                           initial_file, end_file,
                                            num_of_this_piece=requirement[1])
         if all and not piece_in_board:
             return False
@@ -166,29 +151,11 @@ def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities,
     return all
 
 def does_position_satisfy_specs(stockfish: Stockfish, fen: str, position_specs: List[Piece_Quantities]) -> bool:
-    # position_specs must be a list of 17 `Piece_Quantities` objects.
-        # Index 0 is for pieces that have to exist, but can be placed anywhere.
-        # Indices 1-8 for rows 1-8.
-        # Indices 9-16 for columns a-h.
-        # Index 17 is for pieces which mustn't exist in the position.
-        # Each string will store all the piece(s) and pawn(s) the user wants in that particular row/column. 
-        # E.g.: "PKp" means to have a white pawn, king, and black pawn in the column/row that the string represents.
     stockfish.set_fen_position(fen, send_ucinewgame_token = False)
-    for i in range(18):
-        if i == 0 or i == 17:
-            file, row = None, None
-        elif i <= 8:
-            file = None
-            row = i
-        else:
-            file = file_int_to_char(i - 8)
-            row = None
-
-        if i == 17 and are_pieces_in_board(stockfish, position_specs[i], file, row, all=False):
+    for spec in position_specs:
+        if ( (spec.should_exclude() and are_pieces_in_board(stockfish, spec, all=False)) or
+             (not spec.should_exclude() and not are_pieces_in_board(stockfish, spec)   ) ):
             return False
-        if i != 17 and not are_pieces_in_board(stockfish, position_specs[i], file, row):
-            return False
-
     return True
 
 def satisfies_bound(move_dict: dict, bound: Optional[float], is_lower_bound: bool) -> bool:
@@ -248,8 +215,8 @@ def is_underpromotion_best(stockfish: Stockfish, fen: str) -> Union[bool, str]:
     # In order to work with evaluations that are relative to the player whose turn it is,
     # rather than positive being white and negative being black.
 
-    if (("w" in fen and not are_pieces_in_board(stockfish, Piece_Quantities("P"), row=7)) or
-        ("w" not in fen and not are_pieces_in_board(stockfish, Piece_Quantities("p"), row=2))):
+    if (("w" in fen and not are_pieces_in_board(stockfish, Piece_Quantities("row 7: P"))) or
+        ("w" not in fen and not are_pieces_in_board(stockfish, Piece_Quantities("row 2: p")))):
         return False # Since a promotion is not even possible.
 
     for depth in depth_increments:
@@ -339,9 +306,7 @@ def print_output_data(type_of_position: str, output_string: str, secondary_outpu
 
 def main() -> None:
     output_filename = str(int(time.time()))
-    
     type_of_position = input("""Enter 'endgame', 'top moves', 'skip move', or 'underpromotion' for the type of position to find: """)
-    
     database_name = input("Enter the name of the pgn database you are using: ")
     if not database_name.endswith('.pgn'):
         database_name += '.pgn'
@@ -349,7 +314,6 @@ def main() -> None:
     game_to_start_search_after: Union[int,str] = input("""To start the search in the DB after a certain game, enter 
 the last name of White, then a space, then the last name of Black, then a space, then the year. 
 To not do this, just press enter: """)
-    
     if game_to_start_search_after != "":
         assert type(game_to_start_search_after) is str
         name_of_player_as_white_in_first_game = game_to_start_search_after.split()[0]
@@ -370,15 +334,10 @@ enter it here. Otherwise, just press enter: """) or "0")
                                                          input("Exactly how many pieces in this endgame: ")
                                                         ) else None
         endgame_specs: List[Piece_Quantities] = get_endgame_specs_from_user()
-        # list of 17 requirements for pieces present.
-        # Index 0 is for pieces that have to exist, but can be placed anywhere.
-        # Indices 1-8 for rows 1-8.
-        # Indices 9-16 for columns a-h.
-        # Index 17 is for pieces that mustn't exist in the position.
-        # Each element will store all the piece(s) and pawn(s) the user wants
-        # in that particular row/column, and in potentially what exact quantities. 
-        # E.g.: "PK2p" (for the requirements) means to have a white pawn, white king, and 2 black pawns in the 
-        # column/row that string represents.
+        # Each element will store all the piece(s) and pawn(s) the user does/doesn't want,
+        # optionally in a particular row and/or column, and optionally in what exact quantities.
+        # E.g.: "~row 2: PK2p" (for a requirement) means to not have any of a white pawn, white king, or
+        # 2 black pawns in row 2.
         
     elif type_of_position == "top moves":
         bounds = get_bounds_from_user(["Enter the lower bound the top move's eval: ",

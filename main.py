@@ -14,15 +14,6 @@ def file_int_to_char(file_int: int) -> str:
     assert 1 <= file_int <= 8
     return chr(ord('a') + file_int - 1)
 
-# continue here - to now use this class, you can (optionally) send requirements strings that are prepended with:
-    # "row [1-8]:"
-    # "file ['a'-'h']:"    either case fine
-    # "['a'-'h'][1-8]:"    for a single square        either case fine
-# To signify requirements that should be excluded, make the first char of the requirements string be either
-# ~ or !.
-
-# Note that for some other code in this file, you currently treat an end row/col by exclusion, not inclusion.
-# This class treats with inclusion.
 class Piece_Quantities:
     """Stores data representing piece chars that must be present, and (optionally) in exactly
        what quantities."""

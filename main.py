@@ -268,9 +268,9 @@ def switch_whose_turn(fen: str) -> str:
     
 def print_output_data(type_of_position: str, output_string: str, secondary_output_string: str, 
                       hit_counter: int, secondary_hit_counter: int, num_games_parsed: int, 
-                      output_filename: str):
+                      output_filename: str, newest_hit: str):
     if type_of_position == "underpromotion":
-        print("Games found where underpromotion best:\n" + secondary_output_string + "\n")
+        print("\n\nGames found where underpromotion best:\n" + secondary_output_string)
         print("Games found where underpromotion best and player missed it:\n" 
                 + output_string)
         print("#Games where underpromotion is best move: " + str(secondary_hit_counter))
@@ -287,9 +287,10 @@ def print_output_data(type_of_position: str, output_string: str, secondary_outpu
                 "\nHit counter: " + str(hit_counter) + "\n\n")
         f.close()
     else:
-        print("Games found matching requirements:\n" + output_string)
+        if newest_hit:
+            print(newest_hit)
         print("#Games parsed: " + str(num_games_parsed))
-        print("Hit_counter = " + str(hit_counter))
+        print("Hit_counter = " + str(hit_counter) + "\n")
         f = open(output_filename + ".txt", "w")
         f.write(output_string + "#Games parsed: " + str(num_games_parsed) + 
                 "\nHit counter: " + str(hit_counter) + "\n\n")
@@ -297,7 +298,7 @@ def print_output_data(type_of_position: str, output_string: str, secondary_outpu
 
 def main() -> None:
     output_filename = str(int(time.time()))
-    type_of_position = input("""Enter 'endgame', 'top moves', 'skip move', or 'underpromotion' for the type of position to find: """)
+    type_of_position = input("""Enter 'endgame', 'top moves', 'skip move', or 'underpromotion' for the type of position to find: """).lower()
     database_name = input("Enter the name of the pgn database you are using: ")
     if not database_name.endswith('.pgn'):
         database_name += '.pgn'
@@ -319,6 +320,8 @@ enter it here. Otherwise, just press enter: """) or "0")
         input("Enter the move to start searching for matching positions in each game: ")
         or "0"
     )
+
+    DEFAULT_OUTPUT_INTERVALS = 40 if type_of_position != "endgame" else 200
     
     if type_of_position == "endgame":
         num_pieces_desired_endgame = int(user_input) if (user_input := 
@@ -383,11 +386,18 @@ enter it here. Otherwise, just press enter: """) or "0")
             break
         current_game_as_str = str(current_game)
         num_games_parsed += 1
-
         board = current_game.board()
         move_counter = 0
         prev_move = None
+        newest_hit = ""
+
         for move in current_game.mainline_moves():
+            if newest_hit:
+                print_output_data(type_of_position, output_string, secondary_output_string,
+                                  hit_counter, secondary_hit_counter, num_games_parsed, output_filename,
+                                  newest_hit)
+            newest_hit = ""
+
             if type_of_position == "underpromotion":
                 if prev_move is not None:
                     board.push(prev_move)
@@ -397,13 +407,7 @@ enter it here. Otherwise, just press enter: """) or "0")
             move_counter += 1
             if move_counter < move_to_start_in_each_game * 2:
                 continue
-            board_str_rep = (
-                board.fen()
-                + "\n"
-                + str(board)
-                + "\nfrom:\n"
-                + current_game_as_str
-            )
+            board_str_rep = board.fen() + "\n" + str(board) + "\nfrom:\n" + current_game_as_str
 
             if type_of_position == "endgame":
                 num_pieces_in_current_fen = num_pieces_in_fen(board.fen())
@@ -413,18 +417,17 @@ enter it here. Otherwise, just press enter: """) or "0")
                 if (    (num_pieces_desired_endgame is None or
                          num_pieces_in_current_fen == num_pieces_desired_endgame)
                     and does_position_satisfy_specs(stockfish, board.fen(), endgame_specs)):
-                    output_string += (board_str_rep + "\n\n----------\n\n")
+                    newest_hit = board_str_rep + "\n\n----------\n\n"
+                    output_string += newest_hit
                     hit_counter += 1
                     break  # On to the next game
 
             elif type_of_position == "top moves":
                 if does_position_satisfy_bounds(stockfish, board.fen(), bounds):
-                    output_string += (
-                        board_str_rep
-                        + "\nTop moves:\n"
-                        + ', '.join(str(d) for d in stockfish.get_top_moves(2))
-                        + "\n\n----------\n\n"
-                    )
+                    newest_hit = (board_str_rep + "\nTop moves:\n" +
+                                  ', '.join(str(d) for d in stockfish.get_top_moves(2)) +
+                                  "\n\n----------\n\n")
+                    output_string += newest_hit
                     hit_counter += 1
             
             elif type_of_position == "skip move":
@@ -432,25 +435,26 @@ enter it here. Otherwise, just press enter: """) or "0")
                     stockfish.is_fen_valid(switch_whose_turn(board.fen())) and
                     does_position_satisfy_bounds(stockfish, switch_whose_turn(board.fen()), 
                                                  bounds[2:4])):
-                    output_string += (board_str_rep + "\n\n----------\n\n")
+                    newest_hit = board_str_rep + "\n\n----------\n\n"
+                    output_string += newest_hit
                     hit_counter += 1
             
             elif type_of_position == "underpromotion":
                 underpromotion_move = is_underpromotion_best(stockfish, board.fen()) # returns False or str
                 if underpromotion_move: # must be a move string
-                    secondary_output_string += (board_str_rep + "\n\n----------\n\n")
+                    newest_hit = board_str_rep + "\n\n----------\n\n"
+                    secondary_output_string += newest_hit
                     secondary_hit_counter += 1
                     if underpromotion_move != move.uci():
-                        output_string += (board_str_rep + "\n\n----------\n\n")
+                        output_string += newest_hit
                         hit_counter += 1
-        # End of for loop
+        # End of for loop for iterating over the moves of the current game
         
-        if num_games_parsed % 40 == 0:
+        if newest_hit or num_games_parsed % DEFAULT_OUTPUT_INTERVALS == 0:
             print_output_data(type_of_position, output_string, secondary_output_string,
-                              hit_counter, secondary_hit_counter, num_games_parsed, output_filename)
-    print_output_data(type_of_position, output_string, secondary_output_string,
-                      hit_counter, secondary_hit_counter, num_games_parsed, output_filename)
-
+                              hit_counter, secondary_hit_counter, num_games_parsed, output_filename,
+                              newest_hit)
+    # End of while loop iterating over all the games.
 
 if __name__ == "__main__":
     main()

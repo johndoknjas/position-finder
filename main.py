@@ -19,15 +19,16 @@ class Piece_Quantities:
        what quantities."""
 
     def __init__(self, requirements_string: str) -> None:
-        self._requirements_string = ''.join(requirements_string.split())
-        self._curr_index = 0
+        requirements_string = ''.join(requirements_string.split())
         self._start_row, self._start_file = 1, 1
         self._end_row, self._end_file = 8, 8
-        self._should_exclude = self._requirements_string.startswith(('~', '!'))
-        self._requirements_string = self._requirements_string.lstrip('~!')
-        if len(substrings := self._requirements_string.split(':')) == 2:
+        self._requirements: List[Tuple[str, Optional[int]]] = []
+        self._should_exclude = requirements_string.startswith(('~', '!'))
+        requirements_string = requirements_string.lstrip('~!')
+
+        if len(substrings := requirements_string.split(':')) == 2:
             board_area = substrings[0].lower()
-            self._requirements_string = substrings[1]
+            requirements_string = substrings[1]
             if board_area.startswith('row'):
                 self._start_row = self._end_row = int(board_area[-1])
             elif board_area.startswith('file'):
@@ -37,12 +38,16 @@ class Piece_Quantities:
                 self._start_file = self._end_file = file_char_to_int(board_area[0])
                 self._start_row = self._end_row = int(board_area[1])
 
+        for i, c in enumerate(requirements_string):
+            if c.isdigit():
+                continue
+            quantity = None
+            if i+1 < len(requirements_string) and requirements_string[i+1].isdigit():
+                quantity = int(requirements_string[i+1])
+            self._requirements.append((c, quantity))
+
     def get_requirements(self) -> List[Tuple[str, Optional[int]]]:
-        requirements: List[Tuple[str, Optional[int]]] = []
-        while not self._are_all_read():
-            requirements.append(self._consume_current_requirement())
-        self._rollback_parsing()
-        return requirements
+        return self._requirements
     
     def start_row(self) -> int:
         """Returns the first row to consider."""
@@ -63,32 +68,6 @@ class Piece_Quantities:
     def should_exclude(self) -> bool:
         """Returns whether the pieces specified by this object must not be present in the specified area."""
         return self._should_exclude
-
-    def _rollback_parsing(self) -> None:
-        """Next requirement read after this will be the first one."""
-        self._curr_index = 0
-
-    def _are_all_read(self) -> bool:
-        return self._curr_index >= len(self._requirements_string)
-    
-    def _consume_current_requirement(self) -> Tuple[str, Optional[int]]:
-        """On each call, this function will increment self._curr_index."""
-        assert not self._peek_curr_char().isdigit()
-        piece_char = self._consume_curr_char()
-        quantity: Optional[int] = None
-        if not self._are_all_read() and self._peek_curr_char().isdigit():
-            quantity = int(self._consume_curr_char())
-        return (piece_char, quantity)
-    
-    def _peek_curr_char(self) -> str:
-        assert not self._are_all_read()
-        return self._requirements_string[self._curr_index]
-    
-    def _consume_curr_char(self) -> str:
-        """On each call, this function will increment self._curr_index."""
-        c = self._peek_curr_char()
-        self._curr_index += 1
-        return c
 
 def get_endgame_specs_from_user() -> List[Piece_Quantities]:
     endgame_specs: List[Piece_Quantities] = []

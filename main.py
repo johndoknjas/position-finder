@@ -2,6 +2,7 @@ import chess.pgn
 from models import Stockfish
 import time
 from typing import Tuple, Optional, Union, List
+import itertools
 
 PIECE_CHARS: List[str] = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
 
@@ -277,7 +278,7 @@ def print_output_data(type_of_position: str, output_string: str, secondary_outpu
 
 def main() -> None:
     output_filename = str(int(time.time()))
-    type_of_position = input("""Enter 'endgame', 'top moves', 'skip move', or 'underpromotion' for the type of position to find: """).lower()
+    type_of_position = input("""Enter 'endgame', 'top moves', 'skip move', 'underpromotion', or 'name' for the type of position to find: """).lower()
     database_name = input("Enter the name of the pgn database you are using: ")
     if not database_name.endswith('.pgn'):
         database_name += '.pgn'
@@ -328,16 +329,22 @@ enter it here. Otherwise, just press enter: """) or "0")
                                        "Upper bound for the position with move skipped : "])
         # Again, like in the elif above, here bounds will be used later in the main loop.
 
+    elif type_of_position == 'name':
+        print('Enter a substring (or substrings, separated by spaces) to check for in the ', end='')
+        print("'White' and 'Black' headers for each game: ")
+        name_contains = input().lower().split()
+
     stockfish = Stockfish(path="stockfish")
     pgn = open(database_name, "r", errors="replace")
     num_games_parsed = 0
     hit_counter = 0
     output_string = ""
-    # Will store the games which feature the desired type of endgame.
+    # Will store the games that meet the user's specifications.
     secondary_hit_counter = 0 # used for underpromotion feature
     secondary_output_string = "" # used for underpromotion feature
     reached_first_game_for_search_in_DB = not game_to_start_search_after
     while True:
+        num_games_parsed += 1
         if not reached_first_game_for_search_in_DB:
             headers = chess.pgn.read_headers(pgn)
             assert headers is not None
@@ -364,7 +371,6 @@ enter it here. Otherwise, just press enter: """) or "0")
         if current_game is None:
             break
         current_game_as_str = str(current_game)
-        num_games_parsed += 1
         board = current_game.board()
         move_counter = 0
         prev_move = None
@@ -427,6 +433,16 @@ enter it here. Otherwise, just press enter: """) or "0")
                     if underpromotion_move != move.uci():
                         output_string += newest_hit
                         hit_counter += 1
+
+            elif type_of_position == 'name':
+                white, black = (current_game.headers[x] for x in ("White", "Black"))
+                if any(x.lower() in y.lower() for x, y in itertools.product(name_contains, (white, black))):
+                    newest_hit = f"{current_game.headers['White']}-{current_game.headers['Black']}"
+                    newest_hit += "\n\n----------\n\n"
+                    output_string += newest_hit
+                    hit_counter += 1
+                    break
+
         # End of for loop for iterating over the moves of the current game
 
         if newest_hit or num_games_parsed % DEFAULT_OUTPUT_INTERVALS == 0:

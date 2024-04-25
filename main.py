@@ -1,8 +1,10 @@
-import chess.pgn
-from models import Stockfish
 import time
 from typing import Tuple, Optional, Union, List
 import itertools
+import os
+
+import chess.pgn
+from models import Stockfish
 
 PIECE_CHARS: List[str] = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
 
@@ -249,6 +251,9 @@ def switch_whose_turn(fen: str) -> str:
 def print_output_data(type_of_position: str, output_string: str, secondary_output_string: str,
                       hit_counter: int, secondary_hit_counter: int, num_games_parsed: int,
                       output_filename: str, newest_hit: str):
+    folder_name = 'results'
+    os.makedirs(folder_name, exist_ok=True)
+    output_filename = os.path.join(folder_name, output_filename)
     if type_of_position == "underpromotion":
         print("\n\nGames found where underpromotion best:\n" + secondary_output_string)
         print("Games found where underpromotion best and player missed it:\n"

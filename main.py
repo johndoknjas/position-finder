@@ -48,7 +48,7 @@ class Piece_Quantities:
 
     def get_requirements(self) -> List[Tuple[str, Optional[int]]]:
         return self._requirements
-    
+
     def start_row(self) -> int:
         """Returns the first row to consider."""
         return self._start_row
@@ -86,7 +86,7 @@ def is_piece_in_board(stockfish: Stockfish, piece_char: str, row_start: int, row
     """If the optional num_of_this_piece param is left as None, then the function returns true iff
        at least one of the specified piece char is in the board.
        Otherwise, exactly the specified number of the piece must be present."""
-    
+
     hit_counter = 0
     for row in range(row_start, row_end+1):
         for col in range(col_start, col_end+1):
@@ -110,7 +110,7 @@ def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, all: boo
     initial_file = pieces.start_file()
     end_file = pieces.end_file()
     for requirement in pieces.get_requirements():
-        piece_in_board = is_piece_in_board(stockfish, requirement[0], 
+        piece_in_board = is_piece_in_board(stockfish, requirement[0],
                                            initial_row, end_row,
                                            initial_file, end_file,
                                            num_of_this_piece=requirement[1])
@@ -150,7 +150,7 @@ def does_position_satisfy_bounds(stockfish: Stockfish, fen: str, bounds: List[Op
        the 1st element is the upper bound for the first move, etc (for however many
        top moves). It may just be the one top move, or it could be 1 more, 2 more, etc.
        len(bounds) will be even."""
-    
+
     # Also allow for if it's Black to move (so if the evals are negative, in Black's favour).
     stockfish.set_fen_position(fen, send_ucinewgame_token = False)
     depth_increments = [8, 12, 15]
@@ -244,25 +244,25 @@ def switch_whose_turn(fen: str) -> str:
         return fen.replace("w", "b")
     else:
         return fen.replace(" b ", " w ")
-    
-def print_output_data(type_of_position: str, output_string: str, secondary_output_string: str, 
-                      hit_counter: int, secondary_hit_counter: int, num_games_parsed: int, 
+
+def print_output_data(type_of_position: str, output_string: str, secondary_output_string: str,
+                      hit_counter: int, secondary_hit_counter: int, num_games_parsed: int,
                       output_filename: str, newest_hit: str):
     if type_of_position == "underpromotion":
         print("\n\nGames found where underpromotion best:\n" + secondary_output_string)
-        print("Games found where underpromotion best and player missed it:\n" 
+        print("Games found where underpromotion best and player missed it:\n"
                 + output_string)
         print("#Games where underpromotion is best move: " + str(secondary_hit_counter))
         print("#Games where underpromotion is best move and player missed it: " + str(hit_counter))
         print("#Games parsed: " + str(num_games_parsed))
 
         f = open(output_filename + "-games where underpromotion is best move.txt", "w")
-        f.write(secondary_output_string + "#Games parsed: " + str(num_games_parsed) + 
+        f.write(secondary_output_string + "#Games parsed: " + str(num_games_parsed) +
                 "\nHit counter: " + str(secondary_hit_counter) + "\n\n")
         f.close()
 
         f = open(output_filename + "-games where underpromotion is best and player missed it.txt", "w")
-        f.write(output_string + "#Games parsed: " + str(num_games_parsed) + 
+        f.write(output_string + "#Games parsed: " + str(num_games_parsed) +
                 "\nHit counter: " + str(hit_counter) + "\n\n")
         f.close()
     else:
@@ -271,7 +271,7 @@ def print_output_data(type_of_position: str, output_string: str, secondary_outpu
         print("#Games parsed: " + str(num_games_parsed))
         print("Hit_counter = " + str(hit_counter) + "\n")
         f = open(output_filename + ".txt", "w")
-        f.write(output_string + "#Games parsed: " + str(num_games_parsed) + 
+        f.write(output_string + "#Games parsed: " + str(num_games_parsed) +
                 "\nHit counter: " + str(hit_counter) + "\n\n")
         f.close()
 
@@ -282,8 +282,8 @@ def main() -> None:
     if not database_name.endswith('.pgn'):
         database_name += '.pgn'
 
-    game_to_start_search_after: Union[int,str] = input("""To start the search in the DB after a certain game, enter 
-the last name of White, then a space, then the last name of Black, then a space, then the year. 
+    game_to_start_search_after: Union[int,str] = input("""To start the search in the DB after a certain game, enter
+the last name of White, then a space, then the last name of Black, then a space, then the year.
 To not do this, just press enter: """)
     if game_to_start_search_after != "":
         assert type(game_to_start_search_after) is str
@@ -301,9 +301,9 @@ enter it here. Otherwise, just press enter: """) or "0")
     )
 
     DEFAULT_OUTPUT_INTERVALS = 40 if type_of_position != "endgame" else 200
-    
+
     if type_of_position == "endgame":
-        num_pieces_desired_endgame = int(user_input) if (user_input := 
+        num_pieces_desired_endgame = int(user_input) if (user_input :=
                                                          input("Exactly how many pieces in this endgame: ")
                                                         ) else None
         endgame_specs: List[Piece_Quantities] = get_endgame_specs_from_user()
@@ -311,7 +311,7 @@ enter it here. Otherwise, just press enter: """) or "0")
         # optionally in a particular row and/or column, and optionally in what exact quantities.
         # E.g.: "~row 2: PK2p" (for a requirement) means to not have any of a white pawn, white king, or
         # 2 black pawns in row 2.
-        
+
     elif type_of_position == "top moves":
         bounds = get_bounds_from_user(["Enter the lower bound the top move's eval: ",
                                        "Upper bound for top move's eval: ",
@@ -320,7 +320,7 @@ enter it here. Otherwise, just press enter: """) or "0")
         # bounds will be used later in the main while loop. This list will store 4 floats,
         # representing the info above (in that order). So, lower bound for the top move in the
         # first spot in the list, etc.
-    
+
     elif type_of_position == "skip move":
         bounds = get_bounds_from_user(["Enter the lower bound eval for a position: ",
                                        "Upper bound for a position: ",
@@ -344,13 +344,13 @@ enter it here. Otherwise, just press enter: """) or "0")
             game_date = headers.get("Date")
             assert type(game_date) is str
             reached_first_game_for_search_in_DB = (
-                (   
-                    name_of_player_as_white_in_first_game in headers.get("White", "?") and 
+                (
+                    name_of_player_as_white_in_first_game in headers.get("White", "?") and
                     name_of_player_as_black_in_first_game in headers.get("Black", "?") and
                     date_of_first_game in game_date
-                ) 
+                )
                 if isinstance(game_to_start_search_after, str)
-                else 
+                else
                 (
                     num_games_parsed >= game_to_start_search_after
                 )
@@ -408,16 +408,16 @@ enter it here. Otherwise, just press enter: """) or "0")
                                   "\n\n----------\n\n")
                     output_string += newest_hit
                     hit_counter += 1
-            
+
             elif type_of_position == "skip move":
                 if (does_position_satisfy_bounds(stockfish, board.fen(), bounds[0:2]) and
                     stockfish.is_fen_valid(switch_whose_turn(board.fen())) and
-                    does_position_satisfy_bounds(stockfish, switch_whose_turn(board.fen()), 
+                    does_position_satisfy_bounds(stockfish, switch_whose_turn(board.fen()),
                                                  bounds[2:4])):
                     newest_hit = board_str_rep + "\n\n----------\n\n"
                     output_string += newest_hit
                     hit_counter += 1
-            
+
             elif type_of_position == "underpromotion":
                 underpromotion_move = is_underpromotion_best(stockfish, board.fen()) # returns False or str
                 if underpromotion_move: # must be a move string
@@ -428,7 +428,7 @@ enter it here. Otherwise, just press enter: """) or "0")
                         output_string += newest_hit
                         hit_counter += 1
         # End of for loop for iterating over the moves of the current game
-        
+
         if newest_hit or num_games_parsed % DEFAULT_OUTPUT_INTERVALS == 0:
             print_output_data(type_of_position, output_string, secondary_output_string,
                               hit_counter, secondary_hit_counter, num_games_parsed, output_filename,

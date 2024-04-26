@@ -3,6 +3,7 @@
   number.
     - Maybe ask the user for a min and max.
 - Clean up the code a bit, wherever seems necessary.
+- When opening the pgn file, consider using 'with open'.
 - When the Stockfish fork is eventually on PyPI, and updated so that mypy can analyze it, import it again for
   this project instead of using models.py directly.
 - Make the move count (when to start looking for positions) and games_parsed counter in the main loop more exact.

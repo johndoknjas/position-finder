@@ -281,10 +281,16 @@ def print_output_data(type_of_position: str, output_string: str, secondary_outpu
                 "\nHit counter: " + str(hit_counter) + "\n\n")
         f.close()
 
+def try_apply_aliases(text: str) -> str:
+    """If `text` is an alias, return what it stands for. Otherwise, return `text`."""
+    with open('aliases.txt', mode='r') as f:
+        lines = [line.strip().split(maxsplit=1) for line in f]
+        return next((line[1] for line in lines if line[0].lower() == text.lower()), text)
+
 def main() -> None:
     output_filename = str(int(time.time()))
     type_of_position = input("""Enter 'endgame', 'top moves', 'skip move', 'underpromotion', or 'name' for the type of position to find: """).lower()
-    database_name = input("Enter the name of the pgn database you are using: ")
+    database_name = try_apply_aliases(input("Enter the name (or alias) of the pgn database you are using: "))
     if not database_name.endswith('.pgn'):
         database_name += '.pgn'
 
@@ -455,6 +461,7 @@ enter it here. Otherwise, just press enter: """) or "0")
                               hit_counter, secondary_hit_counter, num_games_parsed, output_filename,
                               newest_hit)
     # End of while loop iterating over all the games.
+    pgn.close()
 
 if __name__ == "__main__":
     main()

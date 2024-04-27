@@ -312,7 +312,7 @@ enter it here. Otherwise, just press enter: """) or "0")
         or "0"
     )
 
-    DEFAULT_OUTPUT_INTERVALS = 40 if type_of_position != "endgame" else 200
+    DEFAULT_OUTPUT_INTERVALS = {'endgame': 200, 'name': 40000}.get(type_of_position, 40)
 
     if type_of_position == "endgame":
         num_pieces_desired_endgame = int(user_input) if (user_input :=
@@ -358,14 +358,12 @@ enter it here. Otherwise, just press enter: """) or "0")
         num_games_parsed += 1
         if not reached_first_game_for_search_in_DB:
             headers = chess.pgn.read_headers(pgn)
-            assert headers is not None
-            game_date = headers.get("Date")
-            assert type(game_date) is str
             reached_first_game_for_search_in_DB = (
                 (
+                    headers is not None and
                     name_of_player_as_white_in_first_game in headers.get("White", "?") and
                     name_of_player_as_black_in_first_game in headers.get("Black", "?") and
-                    date_of_first_game in game_date
+                    date_of_first_game in headers.get("Date", "?")
                 )
                 if isinstance(game_to_start_search_after, str)
                 else
@@ -378,83 +376,82 @@ enter it here. Otherwise, just press enter: """) or "0")
             if num_games_parsed % 20000 == 0:
                 print("Skipped " + str(num_games_parsed))
             continue
-        current_game = chess.pgn.read_game(pgn)
-        if current_game is None:
-            break
-        current_game_as_str = str(current_game)
-        board = current_game.board()
-        move_counter = 0
-        prev_move = None
+
         newest_hit = ""
+        if type_of_position == 'name':
+            if (headers := chess.pgn.read_headers(pgn)) is None:
+                break
+            white, black = (headers.get(x, '?') for x in ("White", "Black"))
+            if any(x.lower() in y.lower() for x, y in itertools.product(name_contains, (white, black))):
+                output_string += (newest_hit := f"{white}-{black}\n\n----------\n\n")
+                hit_counter += 1
+        else:
+            current_game = chess.pgn.read_game(pgn)
+            if current_game is None:
+                break
+            current_game_as_str = str(current_game)
+            board = current_game.board()
+            move_counter = 0
+            prev_move = None
+            for move in current_game.mainline_moves():
+                if newest_hit:
+                    print_output_data(type_of_position, output_string, secondary_output_string,
+                                    hit_counter, secondary_hit_counter, num_games_parsed, output_filename,
+                                    newest_hit)
+                newest_hit = ""
 
-        for move in current_game.mainline_moves():
-            if newest_hit:
-                print_output_data(type_of_position, output_string, secondary_output_string,
-                                  hit_counter, secondary_hit_counter, num_games_parsed, output_filename,
-                                  newest_hit)
-            newest_hit = ""
+                if type_of_position == "underpromotion":
+                    if prev_move is not None:
+                        board.push(prev_move)
+                    prev_move = move # Note - prev_move is a misnomer for the rest of this loop iteration now.
+                else:
+                    board.push(move)
+                move_counter += 1
+                if move_counter < move_to_start_in_each_game * 2:
+                    continue
+                board_str_rep = board.fen() + "\n" + str(board) + "\nfrom:\n" + current_game_as_str
 
-            if type_of_position == "underpromotion":
-                if prev_move is not None:
-                    board.push(prev_move)
-                prev_move = move # Note - prev_move is a misnomer for the rest of this loop iteration now.
-            else:
-                board.push(move)
-            move_counter += 1
-            if move_counter < move_to_start_in_each_game * 2:
-                continue
-            board_str_rep = board.fen() + "\n" + str(board) + "\nfrom:\n" + current_game_as_str
+                if type_of_position == "endgame":
+                    num_pieces_in_current_fen = num_pieces_in_fen(board.fen())
+                    if (num_pieces_desired_endgame is not None and
+                        num_pieces_in_current_fen < num_pieces_desired_endgame):
+                        break  # Too few pieces to ever reach the desired endgame now.
+                    if (    (num_pieces_desired_endgame is None or
+                            num_pieces_in_current_fen == num_pieces_desired_endgame)
+                        and does_position_satisfy_specs(stockfish, board.fen(), endgame_specs)):
+                        newest_hit = board_str_rep + "\n\n----------\n\n"
+                        output_string += newest_hit
+                        hit_counter += 1
+                        break  # On to the next game
 
-            if type_of_position == "endgame":
-                num_pieces_in_current_fen = num_pieces_in_fen(board.fen())
-                if (num_pieces_desired_endgame is not None and
-                    num_pieces_in_current_fen < num_pieces_desired_endgame):
-                    break  # Too few pieces to ever reach the desired endgame now.
-                if (    (num_pieces_desired_endgame is None or
-                         num_pieces_in_current_fen == num_pieces_desired_endgame)
-                    and does_position_satisfy_specs(stockfish, board.fen(), endgame_specs)):
-                    newest_hit = board_str_rep + "\n\n----------\n\n"
-                    output_string += newest_hit
-                    hit_counter += 1
-                    break  # On to the next game
-
-            elif type_of_position == "top moves":
-                if does_position_satisfy_bounds(stockfish, board.fen(), bounds):
-                    newest_hit = (board_str_rep + "\nTop moves:\n" +
-                                  ', '.join(str(d) for d in stockfish.get_top_moves(2)) +
-                                  "\n\n----------\n\n")
-                    output_string += newest_hit
-                    hit_counter += 1
-
-            elif type_of_position == "skip move":
-                if (does_position_satisfy_bounds(stockfish, board.fen(), bounds[0:2]) and
-                    stockfish.is_fen_valid(switch_whose_turn(board.fen())) and
-                    does_position_satisfy_bounds(stockfish, switch_whose_turn(board.fen()),
-                                                 bounds[2:4])):
-                    newest_hit = board_str_rep + "\n\n----------\n\n"
-                    output_string += newest_hit
-                    hit_counter += 1
-
-            elif type_of_position == "underpromotion":
-                underpromotion_move = is_underpromotion_best(stockfish, board.fen()) # returns False or str
-                if underpromotion_move: # must be a move string
-                    newest_hit = board_str_rep + "\n\n----------\n\n"
-                    secondary_output_string += newest_hit
-                    secondary_hit_counter += 1
-                    if underpromotion_move != move.uci():
+                elif type_of_position == "top moves":
+                    if does_position_satisfy_bounds(stockfish, board.fen(), bounds):
+                        newest_hit = (board_str_rep + "\nTop moves:\n" +
+                                    ', '.join(str(d) for d in stockfish.get_top_moves(2)) +
+                                    "\n\n----------\n\n")
                         output_string += newest_hit
                         hit_counter += 1
 
-            elif type_of_position == 'name':
-                white, black = (current_game.headers[x] for x in ("White", "Black"))
-                if any(x.lower() in y.lower() for x, y in itertools.product(name_contains, (white, black))):
-                    newest_hit = f"{current_game.headers['White']}-{current_game.headers['Black']}"
-                    newest_hit += "\n\n----------\n\n"
-                    output_string += newest_hit
-                    hit_counter += 1
-                    break
+                elif type_of_position == "skip move":
+                    if (does_position_satisfy_bounds(stockfish, board.fen(), bounds[0:2]) and
+                        stockfish.is_fen_valid(switch_whose_turn(board.fen())) and
+                        does_position_satisfy_bounds(stockfish, switch_whose_turn(board.fen()),
+                                                    bounds[2:4])):
+                        newest_hit = board_str_rep + "\n\n----------\n\n"
+                        output_string += newest_hit
+                        hit_counter += 1
 
-        # End of for loop for iterating over the moves of the current game
+                elif type_of_position == "underpromotion":
+                    underpromotion_move = is_underpromotion_best(stockfish, board.fen()) # returns False or str
+                    if underpromotion_move: # must be a move string
+                        newest_hit = board_str_rep + "\n\n----------\n\n"
+                        secondary_output_string += newest_hit
+                        secondary_hit_counter += 1
+                        if underpromotion_move != move.uci():
+                            output_string += newest_hit
+                            hit_counter += 1
+
+                # End of for loop for iterating over the moves of the current game
 
         if newest_hit or num_games_parsed % DEFAULT_OUTPUT_INTERVALS == 0:
             print_output_data(type_of_position, output_string, secondary_output_string,

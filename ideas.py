@@ -3,6 +3,9 @@
   number.
     - Maybe ask the user for a min and max.
 - Clean up the code a bit, wherever seems necessary.
+    - E.g., put the for loop that iterates over moves into its own function.
+- Make a pytest file in order to do regression tests. Been multiple times now where a change has broken something,
+  so good to have tests.
 - When opening the pgn file, consider using 'with open'.
 - When the Stockfish fork is eventually on PyPI, and updated so that mypy can analyze it, import it again for
   this project instead of using models.py directly.

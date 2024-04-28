@@ -1,10 +1,10 @@
 import time
 from typing import Tuple, Optional, Union, List
 import itertools
-import os
 
 import chess.pgn
 from models import Stockfish
+from output_obj import Output
 
 PIECE_CHARS: List[str] = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
 
@@ -125,11 +125,9 @@ def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, all: boo
 
 def does_position_satisfy_specs(stockfish: Stockfish, fen: str, position_specs: List[Piece_Quantities]) -> bool:
     stockfish.set_fen_position(fen, send_ucinewgame_token = False)
-    for spec in position_specs:
-        if ( (spec.should_exclude() and are_pieces_in_board(stockfish, spec, all=False)) or
-             (not spec.should_exclude() and not are_pieces_in_board(stockfish, spec)   ) ):
-            return False
-    return True
+    return all((spec.should_exclude() and not are_pieces_in_board(stockfish, spec, all=False)) or
+               (not spec.should_exclude() and are_pieces_in_board(stockfish, spec))
+               for spec in position_specs)
 
 def satisfies_bound(move_dict: dict, bound: Optional[float], is_lower_bound: bool) -> bool:
     """bound is in centipawn evaluation, as a float (e.g., 2.17) or None.
@@ -180,7 +178,7 @@ def does_position_satisfy_bounds(stockfish: Stockfish, fen: str, bounds: List[Op
     return True
 
 def is_underpromotion_best(stockfish: Stockfish, fen: str) -> Union[bool, str]:
-    # Returns False if so. Otherwise, returns the underpromotion move (e.g., e7e8r).
+    """Returns False if not. Otherwise, returns the underpromotion move (e.g., e7e8r)."""
 
     stockfish.set_fen_position(fen, send_ucinewgame_token = False)
     depth_increments = [12, 15, 25]
@@ -243,43 +241,7 @@ def get_bounds_from_user(input_messages: List[str]) -> List[Optional[float]]:
     return bounds
 
 def switch_whose_turn(fen: str) -> str:
-    if "w" in fen:
-        return fen.replace("w", "b")
-    else:
-        return fen.replace(" b ", " w ")
-
-def print_output_data(type_of_position: str, output_string: str, secondary_output_string: str,
-                      hit_counter: int, secondary_hit_counter: int, num_games_parsed: int,
-                      output_filename: str, newest_hit: str):
-    folder_name = 'results'
-    os.makedirs(folder_name, exist_ok=True)
-    output_filename = os.path.join(folder_name, output_filename)
-    if type_of_position == "underpromotion":
-        print("\n\nGames found where underpromotion best:\n" + secondary_output_string)
-        print("Games found where underpromotion best and player missed it:\n"
-                + output_string)
-        print("#Games where underpromotion is best move: " + str(secondary_hit_counter))
-        print("#Games where underpromotion is best move and player missed it: " + str(hit_counter))
-        print("#Games parsed: " + str(num_games_parsed))
-
-        f = open(output_filename + "-games where underpromotion is best move.txt", "w")
-        f.write(secondary_output_string + "#Games parsed: " + str(num_games_parsed) +
-                "\nHit counter: " + str(secondary_hit_counter) + "\n\n")
-        f.close()
-
-        f = open(output_filename + "-games where underpromotion is best and player missed it.txt", "w")
-        f.write(output_string + "#Games parsed: " + str(num_games_parsed) +
-                "\nHit counter: " + str(hit_counter) + "\n\n")
-        f.close()
-    else:
-        if newest_hit:
-            print(newest_hit)
-        print("#Games parsed: " + str(num_games_parsed))
-        print("Hit_counter = " + str(hit_counter) + "\n")
-        f = open(output_filename + ".txt", "w")
-        f.write(output_string + "#Games parsed: " + str(num_games_parsed) +
-                "\nHit counter: " + str(hit_counter) + "\n\n")
-        f.close()
+    return fen.replace("w", "b") if "w" in fen else fen.replace(" b ", " w ")
 
 def try_apply_aliases(text: str) -> str:
     """If `text` is an alias, return what it stands for. Otherwise, return `text`."""
@@ -315,9 +277,9 @@ enter it here. Otherwise, just press enter: """) or "0")
     DEFAULT_OUTPUT_INTERVALS = {'endgame': 200, 'name': 40000}.get(type_of_position, 40)
 
     if type_of_position == "endgame":
-        num_pieces_desired_endgame = int(user_input) if (user_input :=
-                                                         input("Exactly how many pieces in this endgame: ")
-                                                        ) else None
+        num_pieces_desired_endgame = int(user_input) if (
+            user_input := input("Exactly how many pieces in this endgame: ")
+        ) else None
         endgame_specs: List[Piece_Quantities] = get_endgame_specs_from_user()
         # Each element will store all the piece(s) and pawn(s) the user does/doesn't want,
         # optionally in a particular row and/or column, and optionally in what exact quantities.
@@ -347,15 +309,10 @@ enter it here. Otherwise, just press enter: """) or "0")
 
     stockfish = Stockfish(path="stockfish")
     pgn = open(database_name, "r", errors="replace")
-    num_games_parsed = 0
-    hit_counter = 0
-    output_string = ""
-    # Will store the games that meet the user's specifications.
-    secondary_hit_counter = 0 # used for underpromotion feature
-    secondary_output_string = "" # used for underpromotion feature
+    output_data = Output()
     reached_first_game_for_search_in_DB = not game_to_start_search_after
     while True:
-        num_games_parsed += 1
+        output_data.prep_for_new_game()
         if not reached_first_game_for_search_in_DB:
             headers = chess.pgn.read_headers(pgn)
             reached_first_game_for_search_in_DB = (
@@ -368,37 +325,32 @@ enter it here. Otherwise, just press enter: """) or "0")
                 if isinstance(game_to_start_search_after, str)
                 else
                 (
-                    num_games_parsed >= game_to_start_search_after
+                    output_data.num_games() >= game_to_start_search_after
                 )
             )
             if reached_first_game_for_search_in_DB:
                 print("Done skipping games")
-            if num_games_parsed % 20000 == 0:
-                print("Skipped " + str(num_games_parsed))
+            if output_data.num_games() % 20000 == 0:
+                print("Skipped " + str(output_data.num_games()))
             continue
 
-        newest_hit = ""
         if type_of_position == 'name':
             if (headers := chess.pgn.read_headers(pgn)) is None:
                 break
             white, black = (headers.get(x, '?') for x in ("White", "Black"))
             if any(x.lower() in y.lower() for x, y in itertools.product(name_contains, (white, black))):
-                output_string += (newest_hit := f"{white}-{black}\n\n----------\n\n")
-                hit_counter += 1
+                output_data.add_newest_hit(f"{white}-{black}\n\n----------\n\n")
         else:
-            current_game = chess.pgn.read_game(pgn)
-            if current_game is None:
+            if (current_game := chess.pgn.read_game(pgn)) is None:
                 break
             current_game_as_str = str(current_game)
             board = current_game.board()
             move_counter = 0
             prev_move = None
             for move in current_game.mainline_moves():
-                if newest_hit:
-                    print_output_data(type_of_position, output_string, secondary_output_string,
-                                    hit_counter, secondary_hit_counter, num_games_parsed, output_filename,
-                                    newest_hit)
-                newest_hit = ""
+                if output_data.newest_hit_exists():
+                    output_data.print_and_write_data(type_of_position, output_filename)
+                    output_data.clear_newest_hit()
 
                 if type_of_position == "underpromotion":
                     if prev_move is not None:
@@ -419,45 +371,35 @@ enter it here. Otherwise, just press enter: """) or "0")
                     if (    (num_pieces_desired_endgame is None or
                             num_pieces_in_current_fen == num_pieces_desired_endgame)
                         and does_position_satisfy_specs(stockfish, board.fen(), endgame_specs)):
-                        newest_hit = board_str_rep + "\n\n----------\n\n"
-                        output_string += newest_hit
-                        hit_counter += 1
+                        output_data.add_newest_hit(board_str_rep + "\n\n----------\n\n")
                         break  # On to the next game
 
                 elif type_of_position == "top moves":
                     if does_position_satisfy_bounds(stockfish, board.fen(), bounds):
-                        newest_hit = (board_str_rep + "\nTop moves:\n" +
-                                    ', '.join(str(d) for d in stockfish.get_top_moves(2)) +
-                                    "\n\n----------\n\n")
-                        output_string += newest_hit
-                        hit_counter += 1
+                        output_data.add_newest_hit(board_str_rep + "\nTop moves:\n" +
+                                                   ', '.join(str(d) for d in stockfish.get_top_moves(2)) +
+                                                   "\n\n----------\n\n")
 
                 elif type_of_position == "skip move":
                     if (does_position_satisfy_bounds(stockfish, board.fen(), bounds[0:2]) and
                         stockfish.is_fen_valid(switch_whose_turn(board.fen())) and
                         does_position_satisfy_bounds(stockfish, switch_whose_turn(board.fen()),
                                                     bounds[2:4])):
-                        newest_hit = board_str_rep + "\n\n----------\n\n"
-                        output_string += newest_hit
-                        hit_counter += 1
+                        output_data.add_newest_hit(board_str_rep + "\n\n----------\n\n")
 
                 elif type_of_position == "underpromotion":
-                    underpromotion_move = is_underpromotion_best(stockfish, board.fen()) # returns False or str
-                    if underpromotion_move: # must be a move string
-                        newest_hit = board_str_rep + "\n\n----------\n\n"
-                        secondary_output_string += newest_hit
-                        secondary_hit_counter += 1
-                        if underpromotion_move != move.uci():
-                            output_string += newest_hit
-                            hit_counter += 1
+                    underpromotion_move = is_underpromotion_best(stockfish, board.fen())
+                    if underpromotion_move:
+                        assert isinstance(underpromotion_move, str)
+                        output_data.add_newest_hit(
+                            f"{board_str_rep}\n\n----------\n\n", underpromotion_move != move.uci(), True
+                        )
 
                 # End of for loop for iterating over the moves of the current game
 
-        if newest_hit or num_games_parsed % DEFAULT_OUTPUT_INTERVALS == 0:
-            print_output_data(type_of_position, output_string, secondary_output_string,
-                              hit_counter, secondary_hit_counter, num_games_parsed, output_filename,
-                              newest_hit)
-    # End of while loop iterating over all the games.
+        if output_data.newest_hit_exists() or output_data.num_games() % DEFAULT_OUTPUT_INTERVALS == 0:
+            output_data.print_and_write_data(type_of_position, output_filename)
+    # End of the while loop for iterating over all the games.
     pgn.close()
 
 if __name__ == "__main__":

@@ -101,33 +101,18 @@ def is_piece_in_board(stockfish: Stockfish, piece_char: str, row_start: int, row
                 hit_counter += 1
     return num_of_this_piece is not None and hit_counter == num_of_this_piece
 
-def are_pieces_in_board(stockfish: Stockfish, pieces: Piece_Quantities, all: bool = True) -> bool:
-    """
-        - Pre-condition: the stockfish object must be set to the position in question.
-        - `all` = True means the function returns true iff all pieces specified are present.
-          If 'all' = False, the function returns true iff at least one of the specified pieces is present.
-    """
-
-    initial_row = pieces.start_row()
-    end_row = pieces.end_row()
-    initial_file = pieces.start_file()
-    end_file = pieces.end_file()
-    for requirement in pieces.get_requirements():
-        piece_in_board = is_piece_in_board(stockfish, requirement[0],
-                                           initial_row, end_row,
-                                           initial_file, end_file,
-                                           num_of_this_piece=requirement[1])
-        if all and not piece_in_board:
-            return False
-        if not all and piece_in_board:
-            return True
-    return all
+def does_board_meet_piece_reqs(stockfish: Stockfish, pieces: Piece_Quantities) -> bool:
+    """Pre-condition: the stockfish object must be set to the position in question."""
+    init_row, end_row = pieces.start_row(), pieces.end_row()
+    init_file, end_file = pieces.start_file(), pieces.end_file()
+    should_exclude = pieces.should_exclude()
+    return all(should_exclude != is_piece_in_board(stockfish, requirement[0], init_row, end_row,
+                                                   init_file, end_file, num_of_this_piece=requirement[1])
+               for requirement in pieces.get_requirements())
 
 def does_position_satisfy_specs(stockfish: Stockfish, fen: str, position_specs: List[Piece_Quantities]) -> bool:
     stockfish.set_fen_position(fen, send_ucinewgame_token = False)
-    return all((spec.should_exclude() and not are_pieces_in_board(stockfish, spec, all=False)) or
-               (not spec.should_exclude() and are_pieces_in_board(stockfish, spec))
-               for spec in position_specs)
+    return all(does_board_meet_piece_reqs(stockfish, spec) for spec in position_specs)
 
 def satisfies_bound(move_dict: dict, bound: Optional[float], is_lower_bound: bool) -> bool:
     """bound is in centipawn evaluation, as a float (e.g., 2.17) or None.
@@ -186,8 +171,8 @@ def is_underpromotion_best(stockfish: Stockfish, fen: str) -> Union[bool, str]:
     # In order to work with evaluations that are relative to the player whose turn it is,
     # rather than positive being white and negative being black.
 
-    if (("w" in fen and not are_pieces_in_board(stockfish, Piece_Quantities("row 7: P"))) or
-        ("w" not in fen and not are_pieces_in_board(stockfish, Piece_Quantities("row 2: p")))):
+    if (("w" in fen and not does_board_meet_piece_reqs(stockfish, Piece_Quantities("row 7: P"))) or
+        ("w" not in fen and not does_board_meet_piece_reqs(stockfish, Piece_Quantities("row 2: p")))):
         return False # Since a promotion is not even possible.
 
     for depth in depth_increments:

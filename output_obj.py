@@ -1,6 +1,8 @@
 import os
 from typing import Optional
 
+from Specs import Specs
+
 class Output:
     """Represents a number of variables used in outputting results to the user on games found."""
 
@@ -56,12 +58,11 @@ class Output:
     def newest_hit_exists(self) -> bool:
         return self._newest_hit is not None
 
-    def print_and_write_data(self, type_of_position: str, output_filename: str) -> None:
+    def print_and_write_data(self, specs: Specs) -> None:
         """Prints the data and writes it to a file."""
-        folder_name = 'results'
-        os.makedirs(folder_name, exist_ok=True)
-        output_filename = os.path.join(folder_name, output_filename)
-        if type_of_position == "underpromotion":
+        os.makedirs((folder_name := 'results'), exist_ok=True)
+        output_filename = os.path.join(folder_name, specs.filename_of_output())
+        if specs.type_of_position() == "underpromotion":
             print("\n\nGames found where underpromotion best:\n" + self.output_str(True))
             print("Games found where underpromotion best and player missed it:\n"
                     + self.output_str())

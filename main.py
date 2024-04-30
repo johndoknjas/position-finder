@@ -1,88 +1,28 @@
 import time
-from typing import Tuple, Optional, Union, List
+from typing import Optional, Union, List
 import itertools
 
 import chess.pgn
 from models import Stockfish
 from output_obj import Output
+from Specs import Piece_Quantities, Specs
 
 PIECE_CHARS: List[str] = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
-
-def file_char_to_int(file_char: str) -> int:
-    file_char = file_char.lower()
-    assert 'a' <= file_char <= 'h'
-    return 1 + ord(file_char) - ord('a')
-
-def file_int_to_char(file_int: int) -> str:
-    assert 1 <= file_int <= 8
-    return chr(ord('a') + file_int - 1)
-
-class Piece_Quantities:
-    """Stores data representing piece chars that must be present, and (optionally) in exactly
-       what quantities."""
-
-    def __init__(self, requirements_string: str) -> None:
-        requirements_string = ''.join(requirements_string.split())
-        self._start_row, self._start_file = 1, 1
-        self._end_row, self._end_file = 8, 8
-        self._requirements: List[Tuple[str, Optional[int]]] = []
-        self._should_exclude = requirements_string.startswith(('~', '!'))
-        requirements_string = requirements_string.lstrip('~!')
-
-        if len(substrings := requirements_string.split(':')) == 2:
-            board_area = substrings[0].lower()
-            requirements_string = substrings[1]
-            if board_area.startswith('row'):
-                self._start_row = self._end_row = int(board_area[-1])
-            elif board_area.startswith('file'):
-                self._start_file = self._end_file = file_char_to_int(board_area[-1])
-            else:
-                assert len(board_area) == 2
-                self._start_file = self._end_file = file_char_to_int(board_area[0])
-                self._start_row = self._end_row = int(board_area[1])
-
-        for i, c in enumerate(requirements_string):
-            if c.isdigit():
-                continue
-            quantity = None
-            if i+1 < len(requirements_string) and requirements_string[i+1].isdigit():
-                quantity = int(requirements_string[i+1])
-            self._requirements.append((c, quantity))
-
-    def get_requirements(self) -> List[Tuple[str, Optional[int]]]:
-        return self._requirements
-
-    def start_row(self) -> int:
-        """Returns the first row to consider."""
-        return self._start_row
-
-    def end_row(self) -> int:
-        """Returns the last row to consider."""
-        return self._end_row
-
-    def start_file(self) -> int:
-        """Returns the first file to consider, as an int (1-8)."""
-        return self._start_file
-
-    def end_file(self) -> int:
-        """Returns the last file to consider, as an int (1-8)."""
-        return self._end_file
-
-    def should_exclude(self) -> bool:
-        """Returns whether the pieces specified by this object must not be present in the specified area."""
-        return self._should_exclude
 
 def get_endgame_specs_from_user() -> List[Piece_Quantities]:
     endgame_specs: List[Piece_Quantities] = []
     while True:
         piece_requirements = input("Enter a piece requirement string, or just press enter to stop: ")
-        if piece_requirements != "":
-            endgame_specs.append(Piece_Quantities(piece_requirements))
-        else:
+        if piece_requirements == "":
             return endgame_specs
+        endgame_specs.append(Piece_Quantities(piece_requirements))
 
 def num_pieces_in_fen(fen: str) -> int:
     return sum(1 for c in fen.split(' ')[0] if c in PIECE_CHARS)
+
+def file_int_to_char(file_int: int) -> str:
+    assert 1 <= file_int <= 8
+    return chr(ord('a') + file_int - 1)
 
 def is_piece_in_board(stockfish: Stockfish, piece_char: str, row_start: int, row_end: int,
                       col_start: int, col_end: int, num_of_this_piece: Optional[int] = None) -> bool:
@@ -228,40 +168,9 @@ def get_bounds_from_user(input_messages: List[str]) -> List[Optional[float]]:
 def switch_whose_turn(fen: str) -> str:
     return fen.replace("w", "b") if "w" in fen else fen.replace(" b ", " w ")
 
-def try_apply_aliases(text: str) -> str:
-    """If `text` is an alias, return what it stands for. Otherwise, return `text`."""
-    with open('aliases.txt', mode='r') as f:
-        lines = [line.strip().split(maxsplit=1) for line in f]
-        return next((line[1] for line in lines if line[0].lower() == text.lower()), text)
-
 def main() -> None:
-    output_filename = str(int(time.time()))
-    type_of_position = input("""Enter 'endgame', 'top moves', 'skip move', 'underpromotion', or 'name' for the type of position to find: """).lower()
-    database_name = try_apply_aliases(input("Enter the name (or alias) of the pgn database you are using: "))
-    if not database_name.endswith('.pgn'):
-        database_name += '.pgn'
-
-    game_to_start_search_after: Union[int,str] = input("""To start the search in the DB after a certain game, enter
-the last name of White, then a space, then the last name of Black, then a space, then the year.
-To not do this, just press enter: """)
-    if game_to_start_search_after != "":
-        assert type(game_to_start_search_after) is str
-        name_of_player_as_white_in_first_game = game_to_start_search_after.split()[0]
-        name_of_player_as_black_in_first_game = game_to_start_search_after.split()[1]
-        date_of_first_game = game_to_start_search_after.split()[2]
-    else:
-        print()
-        game_to_start_search_after = int(input("""To start the search after a particular game number in the database,
-enter it here. Otherwise, just press enter: """) or "0")
-
-    move_to_start_in_each_game = int(
-        input("Enter the move to start searching for matching positions in each game: ")
-        or "0"
-    )
-
-    DEFAULT_OUTPUT_INTERVALS = {'endgame': 200, 'name': 40000}.get(type_of_position, 40)
-
-    if type_of_position == "endgame":
+    specs = Specs()
+    if specs.type_of_position() == "endgame":
         num_pieces_desired_endgame = int(user_input) if (
             user_input := input("Exactly how many pieces in this endgame: ")
         ) else None
@@ -271,7 +180,7 @@ enter it here. Otherwise, just press enter: """) or "0")
         # E.g.: "~row 2: PK2p" (for a requirement) means to not have any of a white pawn, white king, or
         # 2 black pawns in row 2.
 
-    elif type_of_position == "top moves":
+    elif specs.type_of_position() == "top moves":
         bounds = get_bounds_from_user(["Enter the lower bound the top move's eval: ",
                                        "Upper bound for top move's eval: ",
                                        "Lower bound for the second top move's eval: ",
@@ -280,46 +189,41 @@ enter it here. Otherwise, just press enter: """) or "0")
         # representing the info above (in that order). So, lower bound for the top move in the
         # first spot in the list, etc.
 
-    elif type_of_position == "skip move":
+    elif specs.type_of_position() == "skip move":
         bounds = get_bounds_from_user(["Enter the lower bound eval for a position: ",
                                        "Upper bound for a position: ",
                                        "Lower bound eval (relative to opponent this time) for the position with move skipped : ",
                                        "Upper bound for the position with move skipped : "])
         # Again, like in the elif above, here bounds will be used later in the main loop.
 
-    elif type_of_position == 'name':
+    elif specs.type_of_position() == 'name':
         print('Enter a substring (or substrings, separated by spaces) to check for in the ', end='')
         print("'White' and 'Black' headers for each game: ")
         name_contains = input().lower().split()
 
     stockfish = Stockfish(path="stockfish")
-    pgn = open(database_name, "r", errors="replace")
+    pgn = open(specs.database_name(), "r", errors="replace")
     output_data = Output()
-    reached_first_game_for_search_in_DB = not game_to_start_search_after
+    reached_first_game_for_search = specs.do_not_skip_any_games()
     while True:
         output_data.prep_for_new_game()
-        if not reached_first_game_for_search_in_DB:
+        if not reached_first_game_for_search:
             headers = chess.pgn.read_headers(pgn)
-            reached_first_game_for_search_in_DB = (
-                (
-                    headers is not None and
-                    name_of_player_as_white_in_first_game in headers.get("White", "?") and
-                    name_of_player_as_black_in_first_game in headers.get("Black", "?") and
-                    date_of_first_game in headers.get("Date", "?")
+            if (game_num := specs.game_num_to_search_after()) is not None:
+                reached_first_game_for_search = output_data.num_games() >= game_num
+            else:
+                white, black, date = specs.game_details_to_search_after()
+                reached_first_game_for_search = (
+                    headers is not None and white in headers.get("White", "?") and
+                    black in headers.get("Black", "?") and date in headers.get("Date", "?")
                 )
-                if isinstance(game_to_start_search_after, str)
-                else
-                (
-                    output_data.num_games() >= game_to_start_search_after
-                )
-            )
-            if reached_first_game_for_search_in_DB:
+            if reached_first_game_for_search:
                 print("Done skipping games")
             if output_data.num_games() % 20000 == 0:
                 print("Skipped " + str(output_data.num_games()))
             continue
 
-        if type_of_position == 'name':
+        if specs.type_of_position() == 'name':
             if (headers := chess.pgn.read_headers(pgn)) is None:
                 break
             white, black = (headers.get(x, '?') for x in ("White", "Black"))
@@ -334,21 +238,21 @@ enter it here. Otherwise, just press enter: """) or "0")
             prev_move = None
             for move in current_game.mainline_moves():
                 if output_data.newest_hit_exists():
-                    output_data.print_and_write_data(type_of_position, output_filename)
+                    output_data.print_and_write_data(specs)
                     output_data.clear_newest_hit()
 
-                if type_of_position == "underpromotion":
+                if specs.type_of_position() == "underpromotion":
                     if prev_move is not None:
                         board.push(prev_move)
                     prev_move = move # Note - prev_move is a misnomer for the rest of this loop iteration now.
                 else:
                     board.push(move)
                 move_counter += 1
-                if move_counter < move_to_start_in_each_game * 2:
+                if move_counter < specs.move_to_begin_at() * 2:
                     continue
                 board_str_rep = board.fen() + "\n" + str(board) + "\nfrom:\n" + current_game_as_str
 
-                if type_of_position == "endgame":
+                if specs.type_of_position() == "endgame":
                     num_pieces_in_current_fen = num_pieces_in_fen(board.fen())
                     if (num_pieces_desired_endgame is not None and
                         num_pieces_in_current_fen < num_pieces_desired_endgame):
@@ -359,20 +263,20 @@ enter it here. Otherwise, just press enter: """) or "0")
                         output_data.add_newest_hit(board_str_rep + "\n\n----------\n\n")
                         break  # On to the next game
 
-                elif type_of_position == "top moves":
+                elif specs.type_of_position() == "top moves":
                     if does_position_satisfy_bounds(stockfish, board.fen(), bounds):
                         output_data.add_newest_hit(board_str_rep + "\nTop moves:\n" +
                                                    ', '.join(str(d) for d in stockfish.get_top_moves(2)) +
                                                    "\n\n----------\n\n")
 
-                elif type_of_position == "skip move":
+                elif specs.type_of_position() == "skip move":
                     if (does_position_satisfy_bounds(stockfish, board.fen(), bounds[0:2]) and
                         stockfish.is_fen_valid(switch_whose_turn(board.fen())) and
                         does_position_satisfy_bounds(stockfish, switch_whose_turn(board.fen()),
                                                     bounds[2:4])):
                         output_data.add_newest_hit(board_str_rep + "\n\n----------\n\n")
 
-                elif type_of_position == "underpromotion":
+                elif specs.type_of_position() == "underpromotion":
                     underpromotion_move = is_underpromotion_best(stockfish, board.fen())
                     if underpromotion_move:
                         assert isinstance(underpromotion_move, str)
@@ -382,8 +286,8 @@ enter it here. Otherwise, just press enter: """) or "0")
 
                 # End of for loop for iterating over the moves of the current game
 
-        if output_data.newest_hit_exists() or output_data.num_games() % DEFAULT_OUTPUT_INTERVALS == 0:
-            output_data.print_and_write_data(type_of_position, output_filename)
+        if output_data.newest_hit_exists() or output_data.num_games() % specs.default_output_interval() == 0:
+            output_data.print_and_write_data(specs)
     # End of the while loop for iterating over all the games.
     pgn.close()
 

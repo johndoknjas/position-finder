@@ -31,7 +31,7 @@ class Output:
     def add_newest_hit(self, newest_hit: str, update_primary_vars: bool = True,
                        update_secondary_vars: bool = False) -> None:
         assert self._newest_hit is None
-        self._newest_hit = newest_hit
+        self._newest_hit = f"{newest_hit}\n\n----------\n\n"
         if update_primary_vars:
             self.append_to_output_str(self._newest_hit)
             self.increment_hits()

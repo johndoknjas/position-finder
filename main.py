@@ -1,4 +1,3 @@
-import time
 from typing import Optional, Union, List
 import itertools
 
@@ -169,6 +168,8 @@ def switch_whose_turn(fen: str) -> str:
     return fen.replace("w", "b") if "w" in fen else fen.replace(" b ", " w ")
 
 def main() -> None:
+    if not __debug__:
+        raise RuntimeError("Python isn't running in the default debug mode.")
     specs = Specs()
     if specs.type_of_position() == "endgame":
         num_pieces_desired_endgame = int(user_input) if (
@@ -202,7 +203,7 @@ def main() -> None:
         name_contains = input().lower().split()
 
     stockfish = Stockfish(path="stockfish")
-    pgn = open(specs.database_name(), "r", errors="replace")
+    pgn = open(specs.database_name(), "r", errors="replace", encoding="utf-8-sig")
     output_data = Output()
     reached_first_game_for_search = specs.do_not_skip_any_games()
     while True:
@@ -212,7 +213,8 @@ def main() -> None:
             if (game_num := specs.game_num_to_search_after()) is not None:
                 reached_first_game_for_search = output_data.num_games() >= game_num
             else:
-                white, black, date = specs.game_details_to_search_after()
+                assert (game_details := specs.game_details_to_search_after()) is not None
+                white, black, date = game_details
                 reached_first_game_for_search = (
                     headers is not None and white in headers.get("White", "?") and
                     black in headers.get("Black", "?") and date in headers.get("Date", "?")
@@ -228,7 +230,7 @@ def main() -> None:
                 break
             white, black = (headers.get(x, '?') for x in ("White", "Black"))
             if any(x.lower() in y.lower() for x, y in itertools.product(name_contains, (white, black))):
-                output_data.add_newest_hit(f"{white}-{black}\n\n----------\n\n")
+                output_data.add_newest_hit(f"{white}-{black}")
         else:
             if (current_game := chess.pgn.read_game(pgn)) is None:
                 break
@@ -260,29 +262,26 @@ def main() -> None:
                     if (    (num_pieces_desired_endgame is None or
                             num_pieces_in_current_fen == num_pieces_desired_endgame)
                         and does_position_satisfy_specs(stockfish, board.fen(), endgame_specs)):
-                        output_data.add_newest_hit(board_str_rep + "\n\n----------\n\n")
+                        output_data.add_newest_hit(board_str_rep)
                         break  # On to the next game
 
                 elif specs.type_of_position() == "top moves":
                     if does_position_satisfy_bounds(stockfish, board.fen(), bounds):
                         output_data.add_newest_hit(board_str_rep + "\nTop moves:\n" +
-                                                   ', '.join(str(d) for d in stockfish.get_top_moves(2)) +
-                                                   "\n\n----------\n\n")
+                                                   ', '.join(str(d) for d in stockfish.get_top_moves(2)))
 
                 elif specs.type_of_position() == "skip move":
                     if (does_position_satisfy_bounds(stockfish, board.fen(), bounds[0:2]) and
                         stockfish.is_fen_valid(switch_whose_turn(board.fen())) and
                         does_position_satisfy_bounds(stockfish, switch_whose_turn(board.fen()),
                                                     bounds[2:4])):
-                        output_data.add_newest_hit(board_str_rep + "\n\n----------\n\n")
+                        output_data.add_newest_hit(board_str_rep)
 
                 elif specs.type_of_position() == "underpromotion":
                     underpromotion_move = is_underpromotion_best(stockfish, board.fen())
                     if underpromotion_move:
                         assert isinstance(underpromotion_move, str)
-                        output_data.add_newest_hit(
-                            f"{board_str_rep}\n\n----------\n\n", underpromotion_move != move.uci(), True
-                        )
+                        output_data.add_newest_hit(board_str_rep, underpromotion_move != move.uci(), True)
 
                 # End of for loop for iterating over the moves of the current game
 

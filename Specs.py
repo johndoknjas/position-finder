@@ -63,19 +63,18 @@ class Piece_Quantities:
 
 class GameToSearchAfter:
     def __init__(self) -> None:
-        self._game_details = self._game_num = None
-        user_input = input("To start the search in the DB after a certain game, enter the last name of White, " +
-                           "then a space, then the last name of Black, then a space, then the year. " +
-                           "To not do this, just press enter: ")
-        if user_input != '':
-            self._game_details = user_input.split()
-        else:
-            self._game_num = int(input("\nTo start the search after a particular game number in " +
-                                       "the database, enter it here. Otherwise, just press enter: ")
-                                 or "0")
-        assert (self.game_num() is None) != ((details := self.game_details()) is None)
-        if details is not None:
-            assert len(details) == 3 and all(isinstance(x, str) for x in details)
+        self._game_details: Optional[tuple[str,str,str]] = None
+        self._game_num: Optional[int] = None
+        user_input = input("To start the search after a particular game number in the database, enter it here. " +
+                           "\nOr, to start the search in the DB after a certain game, enter the last name of " +
+                           "White, then a space, then the last name of Black, then a space, then the year. " +
+                           "\nOtherwise to not skip any games, just press enter: ")
+        try:
+            self._game_num = int(user_input or '0')
+        except ValueError:
+            assert len(words := user_input.split()) == 3
+            self._game_details = (words[0], words[1], words[2]) # doing it this way to satisfy mypy
+        assert (self.game_num() is None) != (self.game_details() is None)
 
     def game_num(self) -> Optional[int]:
         return self._game_num

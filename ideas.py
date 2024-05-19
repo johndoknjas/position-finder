@@ -1,4 +1,10 @@
 """
+
+- For plain pgn files, chessbase for some reason treats a ' - ' in White's name as meaning two
+  opponents, and so it puts the rest of the string for Black's name. It also treats ', ' as meaning
+  the first name.
+    - So add a feature where if the program finds, say, moves in Black's name, or moves in either
+      side's first name, it fixes it (and such that chessbase won't mess it up again: so no ' - ' or ', ').
 - Add a way for the user to specify having at most a certain number of pieces total, rather than exactly that
   number.
     - Maybe ask the user for a min and max.

@@ -1,5 +1,10 @@
 """
 
+- Run mypy and clean up type stuff.
+- Test the skip move feature, with '2 and 3' for the first bounds and '2 and 3' again for the second
+  bounds. From the user input instructions, should find positions where eval changes dramatically
+  based on turn. But for the positions found, only those where the tempo doesn't really matter at all.
+- Do variable renaming to be more correct when referring to "pgns" (that could just be study/db names).
 - For plain pgn files, chessbase for some reason treats a ' - ' in White's name as meaning two
   opponents, and so it puts the rest of the string for Black's name. It also treats ', ' as meaning
   the first name.

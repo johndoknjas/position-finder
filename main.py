@@ -1,10 +1,16 @@
 from typing import Optional, Union, List
 import itertools
+from copy import deepcopy
+import time
+import os
+import shlex
 
 import chess.pgn
 from models import Stockfish
 from output_obj import Output
 from Specs import Piece_Quantities, Specs
+import studies
+import Utils
 
 PIECE_CHARS: List[str] = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
 
@@ -167,15 +173,36 @@ def get_bounds_from_user(input_messages: List[str]) -> List[Optional[float]]:
 def switch_whose_turn(fen: str) -> str:
     return fen.replace("w", "b") if "w" in fen else fen.replace(" b ", " w ")
 
+def try_apply_aliases(text: str) -> str:
+    """If `text` is an alias, return what it stands for. Otherwise, return `text`."""
+    with open('aliases.txt', mode='r') as f:
+        lines = [line.strip().split(maxsplit=1) for line in f]
+        return next((line[1] for line in lines if line[0].lower() == text.lower()), text)
+
+def pgn_name_not_study(name: str) -> bool:
+    """Returns True if probably a pgn name, False if probably a study."""
+    return name.endswith('.pgn') or len(name) != 8
+
 def main() -> None:
     if not __debug__:
         raise RuntimeError("Python isn't running in the default debug mode.")
     specs = Specs()
+    database_names = try_apply_aliases(
+        input("Enter the name (or alias) of the pgn database(s) / studies you are using: ")
+    )
+    endgame_specs = bounds = num_pieces_desired_endgame = name_contains = None
+
+    pgns = []
+    for name in shlex.split(database_names):
+        if pgn_name_not_study(name) and not name.endswith('.pgn'):
+            name += '.pgn'
+        pgns.append(name)
+
     if specs.type_of_position() == "endgame":
         num_pieces_desired_endgame = int(user_input) if (
             user_input := input("Exactly how many pieces in this endgame: ")
         ) else None
-        endgame_specs: List[Piece_Quantities] = get_endgame_specs_from_user()
+        endgame_specs = get_endgame_specs_from_user()
         # Each element will store all the piece(s) and pawn(s) the user does/doesn't want,
         # optionally in a particular row and/or column, and optionally in what exact quantities.
         # E.g.: "~row 2: PK2p" (for a requirement) means to not have any of a white pawn, white king, or
@@ -202,8 +229,27 @@ def main() -> None:
         print("'White' and 'Black' headers for each game: ")
         name_contains = input().lower().split()
 
+    for pgn in pgns:
+        specs_copy = deepcopy(specs)
+        specs_copy.set_output_filename(str(int(time.time_ns())))
+        specs_copy.set_pgn(pgn)
+        process_pgn(specs_copy, name_contains, num_pieces_desired_endgame, endgame_specs, bounds)
+        print("****===================================****\n\n\n\n")
+
+def process_pgn(specs: Specs, name_contains: str, num_pieces_desired_endgame: int,
+                endgame_specs, bounds) -> None:
     stockfish = Stockfish(path="stockfish")
-    pgn = open(specs.database_name(), "r", errors="replace", encoding="utf-8-sig")
+    temp_pgn_file = None
+    if specs.pgn().endswith('.pgn'):
+        pgn = open(specs.pgn(), "r", errors="replace", encoding="utf-8-sig")
+    else:
+        pgn_data = studies.get_study_pgn(specs.pgn())
+        os.makedirs((folder_name := 'results'), exist_ok=True)
+        temp_pgn_file = os.path.join(folder_name, f"{time.time_ns()}.txt")
+        f = open(temp_pgn_file, "w")
+        f.write(pgn_data)
+        f.close()
+        pgn = open(temp_pgn_file, "r")
     output_data = Output()
     reached_first_game_for_search = specs.do_not_skip_any_games()
     while True:
@@ -228,13 +274,20 @@ def main() -> None:
         if specs.type_of_position() == 'name':
             if (headers := chess.pgn.read_headers(pgn)) is None:
                 break
-            white, black = (headers.get(x, '?') for x in ("White", "Black"))
-            if any(x.lower() in y.lower() for x, y in itertools.product(name_contains, (white, black))):
-                output_data.add_newest_hit(f"{white}-{black}")
+            white, black, opening, event = (
+                headers.get(x, '?') for x in ("White", "Black", "Opening", "Event")
+            )
+            if any(x.lower() in y.lower() for x, y in itertools.product(
+                name_contains, (white, black, opening, event)
+            )):
+                output_data.add_newest_hit(f"{white}-{black}, opening: {opening}, event: {event}")
         else:
             if (current_game := chess.pgn.read_game(pgn)) is None:
                 break
-            current_game_as_str = str(current_game)
+            current_game_as_str = Utils.remove_lines_starting_with(
+                str(current_game), '[Site "https://lichess.org/'
+            )
+
             board = current_game.board()
             move_counter = 0
             prev_move = None
@@ -289,6 +342,8 @@ def main() -> None:
             output_data.print_and_write_data(specs)
     # End of the while loop for iterating over all the games.
     pgn.close()
+    if temp_pgn_file is not None:
+        os.remove(temp_pgn_file)
 
 if __name__ == "__main__":
     main()

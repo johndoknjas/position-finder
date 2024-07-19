@@ -85,27 +85,31 @@ class GameToSearchAfter:
 
 class Specs:
     def __init__(self) -> None:
-        self._output_filename = str(int(time.time()))
+        self._output_filename = None
         self._type_of_position = input("Enter 'endgame', 'top moves', 'skip move', 'underpromotion', " +
                                        "or 'name' for the type of position to find: ").lower()
-        self._database_name = try_apply_aliases(
-            input("Enter the name (or alias) of the pgn database you are using: ")
-        )
-        if not self._database_name.endswith('.pgn'):
-            self._database_name += '.pgn'
         self._game_to_search_after = GameToSearchAfter()
+        self._pgn = None
         self._move_to_begin_at = int(
             input("Enter the move to start searching for matching positions in each game: ") or "0"
         )
 
     def filename_of_output(self) -> str:
+        assert self._output_filename is not None
         return self._output_filename
+
+    def set_output_filename(self, name: str) -> None:
+        self._output_filename = name
 
     def type_of_position(self) -> str:
         return self._type_of_position
 
-    def database_name(self) -> str:
-        return self._database_name
+    def set_pgn(self, pgn: str) -> None:
+        self._pgn = pgn
+
+    def pgn(self) -> str:
+        assert self._pgn is not None
+        return self._pgn
 
     def game_num_to_search_after(self) -> Optional[int]:
         return self._game_to_search_after.game_num()
@@ -122,9 +126,3 @@ class Specs:
 
     def default_output_interval(self) -> int:
         return {'endgame': 200, 'name': 40000}.get(self.type_of_position(), 40)
-
-def try_apply_aliases(text: str) -> str:
-    """If `text` is an alias, return what it stands for. Otherwise, return `text`."""
-    with open('aliases.txt', mode='r') as f:
-        lines = [line.strip().split(maxsplit=1) for line in f]
-        return next((line[1] for line in lines if line[0].lower() == text.lower()), text)

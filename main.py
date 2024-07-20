@@ -225,8 +225,8 @@ def main() -> None:
         # Again, like in the elif above, here bounds will be used later in the main loop.
 
     elif specs.type_of_position() == 'name':
-        print('Enter a substring (or substrings, separated by spaces) to check for in the ', end='')
-        print("'White' and 'Black' headers for each game: ")
+        print('Enter a substring (or substrings, separated by spaces) to check for in some of the ', end='')
+        print("headers for each game: ")
         name_contains = input().lower().split()
 
     for pgn in pgns:

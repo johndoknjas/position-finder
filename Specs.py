@@ -62,9 +62,12 @@ class Piece_Quantities:
         return self._should_exclude
 
 class GameToSearchAfter:
-    def __init__(self) -> None:
+    def __init__(self, start_at_0: bool = False) -> None:
         self._game_details: Optional[tuple[str,str,str]] = None
         self._game_num: Optional[int] = None
+        if start_at_0:
+            self._game_num = 0
+            return
         user_input = input("To start the search after a particular game number in the database, enter it here. " +
                            "\nOr, to start the search in the DB after a certain game, enter the last name of " +
                            "White, then a space, then the last name of Black, then a space, then the year. " +
@@ -86,13 +89,13 @@ class GameToSearchAfter:
 class Specs:
     def __init__(self) -> None:
         self._output_filename = None
+        self._pgn = None
         self._type_of_position = input("Enter 'endgame', 'top moves', 'skip move', 'underpromotion', " +
                                        "or 'name' for the type of position to find: ").lower()
-        self._game_to_search_after = GameToSearchAfter()
-        self._pgn = None
+        self._game_to_search_after = GameToSearchAfter(self._type_of_position == 'name')
         self._move_to_begin_at = int(
             input("Enter the move to start searching for matching positions in each game: ") or "0"
-        )
+        ) if self._type_of_position != 'name' else 0
 
     def filename_of_output(self) -> str:
         assert self._output_filename is not None

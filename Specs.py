@@ -88,8 +88,8 @@ class GameToSearchAfter:
 
 class Specs:
     def __init__(self) -> None:
-        self._output_filename = None
-        self._pgn = None
+        self._output_filename: Optional[str] = None
+        self._pgn: Optional[str] = None
         self._type_of_position = input("Enter 'endgame', 'top moves', 'skip move', 'underpromotion', " +
                                        "or 'name' for the type of position to find: ").lower()
         self._game_to_search_after = GameToSearchAfter(self._type_of_position == 'name')

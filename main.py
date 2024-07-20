@@ -236,8 +236,8 @@ def main() -> None:
         process_pgn(specs_copy, name_contains, num_pieces_desired_endgame, endgame_specs, bounds)
         print("****===================================****\n\n\n\n")
 
-def process_pgn(specs: Specs, name_contains: str, num_pieces_desired_endgame: int,
-                endgame_specs, bounds) -> None:
+def process_pgn(specs: Specs, name_contains: Optional[list[str]],
+                num_pieces_desired_endgame: Optional[int], endgame_specs, bounds) -> None:
     stockfish = Stockfish(path="stockfish")
     temp_pgn_file = None
     if specs.pgn().endswith('.pgn'):
@@ -277,6 +277,7 @@ def process_pgn(specs: Specs, name_contains: str, num_pieces_desired_endgame: in
             white, black, opening, event = (
                 headers.get(x, '?') for x in ("White", "Black", "Opening", "Event")
             )
+            assert name_contains is not None
             if any(x.lower() in y.lower() for x, y in itertools.product(
                 name_contains, (white, black, opening, event)
             )):

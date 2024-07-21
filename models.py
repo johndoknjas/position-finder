@@ -1256,7 +1256,7 @@ class Stockfish:
         limitType: str = "depth"
         evalType: str = "mixed"
 
-        def __post_init__(self):
+        def __post_init__(self) -> None:
             self.ttSize = self.ttSize if self.ttSize in range(1, 128001) else 16
             self.threads = self.threads if self.threads in range(1, 513) else 1
             self.limit = self.limit if self.limit in range(1, 10001) else 13

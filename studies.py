@@ -1,8 +1,9 @@
+from __future__ import annotations
 import berserk
 
 session, client = None, None
 
-def get_api_key():
+def get_api_key() -> str:
     with open('api-key.txt') as f:
         return f.readline().strip('\n')
 

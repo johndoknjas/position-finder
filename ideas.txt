@@ -1,5 +1,4 @@
 """
-
 - Test the skip move feature, with '2 and 3' for the first bounds and '2 and 3' again for the second
   bounds. From the user input instructions, should find positions where eval changes dramatically
   based on turn. But for the positions found, only those where the tempo doesn't really matter at all.

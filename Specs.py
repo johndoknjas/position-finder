@@ -1,5 +1,5 @@
+from __future__ import annotations
 from typing import List, Tuple, Optional
-import time
 
 def file_char_to_int(file_char: str) -> int:
     file_char = file_char.lower()

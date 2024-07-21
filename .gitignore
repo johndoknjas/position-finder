@@ -3,6 +3,7 @@
 stockfish*
 *.ini
 *.txt
+!ideas.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

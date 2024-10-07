@@ -189,7 +189,7 @@ def main() -> None:
         raise RuntimeError("Python isn't running in the default debug mode.")
     specs = Specs()
     database_names = try_apply_aliases(
-        input("Enter the name (or alias) of the pgn database(s) / studies you are using: ")
+        input("Enter the names (or aliases) of your databases/studies: ")
     )
     endgame_specs = bounds = num_pieces_desired_endgame = name_contains = None
 
@@ -226,9 +226,7 @@ def main() -> None:
         # Again, like in the elif above, here bounds will be used later in the main loop.
 
     elif specs.type_of_position() == 'name':
-        print('Enter a substring (or substrings, separated by spaces) to check for in some of the ', end='')
-        print("headers for each game: ")
-        name_contains = input().lower().split()
+        name_contains = input('Enter substrings to check for in some game headers: ').lower().split()
 
     for pgn in pgns:
         specs_copy = deepcopy(specs)

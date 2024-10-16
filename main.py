@@ -226,7 +226,8 @@ def main() -> None:
         # Again, like in the elif above, here bounds will be used later in the main loop.
 
     elif specs.type_of_position() == 'name':
-        name_contains = input('Enter substrings to check for in some game headers: ').lower().split()
+        name_contains = shlex.split(input('Enter substrings to check for in some game headers: ').lower())
+        print(f"Checking for these substrings: {name_contains}")
 
     for pgn in pgns:
         specs_copy = deepcopy(specs)

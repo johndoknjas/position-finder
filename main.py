@@ -274,14 +274,16 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
         if specs.type_of_position() == 'name':
             if (headers := chess.pgn.read_headers(pgn)) is None:
                 break
-            white, black, opening, event = (
-                headers.get(x, '?') for x in ("White", "Black", "Opening", "Event")
+            white, black, opening, event, source = (
+                headers.get(x, '?') for x in ("White", "Black", "Opening", "Event", "Source")
             )
             assert name_contains is not None
             if any(x.lower() in y.lower() for x, y in itertools.product(
                 name_contains, (white, black, opening, event)
             )):
-                output_data.add_newest_hit(f"{white}-{black}, opening: {opening}, event: {event}")
+                output_data.add_newest_hit(
+                    f"{white}-{black}, opening: {opening}, event: {event}, source: {source}"
+                )
         else:
             if (current_game := chess.pgn.read_game(pgn)) is None:
                 break

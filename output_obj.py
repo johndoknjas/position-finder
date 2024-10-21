@@ -85,7 +85,7 @@ class Output:
                 if specs.pgn().endswith('.pgn'):
                     source_name = specs.pgn().replace('/', '\\').split('\\')[-1]
                 else:
-                    source_name = 'lichess.org/study/' + specs.pgn()
+                    source_name = 'lichess study'
                 print(f"Hit from {source_name}:\n{self.newest_hit()}")
             print(f"#Games parsed: {self.num_games()}")
             print(f"Hit_counter = {self.num_hits()}\n\n\n")

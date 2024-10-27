@@ -300,8 +300,10 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
 def main() -> None:
     if not __debug__:
         raise RuntimeError("Python isn't running in the default debug mode.")
-    specs = Specs(sys.argv[1] if len(sys.argv) > 1 else None)
+    specs = Specs(sys.argv[1] if len(sys.argv) >= 2 else None)
     database_names = try_apply_aliases(
+        ' '.join(sys.argv[2:])
+        if len(sys.argv) >= 3 and sys.argv[1] == 'name' else
         input("Enter the names (or aliases) of your databases/studies: ")
     )
     endgame_specs = bounds = num_pieces_desired_endgame = name_contains = None
@@ -344,7 +346,7 @@ def main() -> None:
 
     for pgn in pgns:
         specs_copy = deepcopy(specs)
-        specs_copy.set_output_filename(str(int(time.time_ns())))
+        specs_copy.set_output_filename(str(time.time_ns()))
         specs_copy.set_pgn(pgn)
         process_pgn(specs_copy, name_contains, num_pieces_desired_endgame, endgame_specs, bounds)
         print("****===================================****\n\n\n\n")

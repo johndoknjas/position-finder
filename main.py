@@ -184,58 +184,6 @@ def pgn_name_not_study(name: str) -> bool:
     """Returns True if probably a pgn name, False if probably a study."""
     return name.endswith('.pgn') or len(name) != 8
 
-def main() -> None:
-    if not __debug__:
-        raise RuntimeError("Python isn't running in the default debug mode.")
-    specs = Specs()
-    database_names = try_apply_aliases(
-        input("Enter the names (or aliases) of your databases/studies: ")
-    )
-    endgame_specs = bounds = num_pieces_desired_endgame = name_contains = None
-
-    pgns = []
-    for name in shlex.split(database_names):
-        if pgn_name_not_study(name) and not name.endswith('.pgn'):
-            name += '.pgn'
-        pgns.append(name)
-
-    if specs.type_of_position() == "endgame":
-        num_pieces_desired_endgame = int(user_input) if (
-            user_input := input("Exactly how many pieces in this endgame: ")
-        ) else None
-        endgame_specs = get_endgame_specs_from_user()
-        # Each element will store all the piece(s) and pawn(s) the user does/doesn't want,
-        # optionally in a particular row and/or column, and optionally in what exact quantities.
-        # E.g.: "~row 2: PK2p" (for a requirement) means to not have any of a white pawn, white king, or
-        # 2 black pawns in row 2.
-
-    elif specs.type_of_position() == "top moves":
-        bounds = get_bounds_from_user(["Enter the lower bound the top move's eval: ",
-                                       "Upper bound for top move's eval: ",
-                                       "Lower bound for the second top move's eval: ",
-                                       "Upper bound for the second top move's eval: "])
-        # bounds will be used later in the main while loop. This list will store 4 floats,
-        # representing the info above (in that order). So, lower bound for the top move in the
-        # first spot in the list, etc.
-
-    elif specs.type_of_position() == "skip move":
-        bounds = get_bounds_from_user(["Enter the lower bound eval for a position: ",
-                                       "Upper bound for a position: ",
-                                       "Lower bound eval (relative to opponent this time) for the position with move skipped : ",
-                                       "Upper bound for the position with move skipped : "])
-        # Again, like in the elif above, here bounds will be used later in the main loop.
-
-    elif specs.type_of_position() == 'name':
-        name_contains = shlex.split(input('Enter substrings to check for in some game headers: ').lower())
-        print(f"Checking for these substrings: {name_contains}")
-
-    for pgn in pgns:
-        specs_copy = deepcopy(specs)
-        specs_copy.set_output_filename(str(int(time.time_ns())))
-        specs_copy.set_pgn(pgn)
-        process_pgn(specs_copy, name_contains, num_pieces_desired_endgame, endgame_specs, bounds)
-        print("****===================================****\n\n\n\n")
-
 def process_pgn(specs: Specs, name_contains: Optional[list[str]],
                 num_pieces_desired_endgame: Optional[int], endgame_specs, bounds) -> None:
     stockfish = Stockfish(path="stockfish")
@@ -347,6 +295,58 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
     pgn.close()
     if temp_pgn_file is not None:
         os.remove(temp_pgn_file)
+
+def main() -> None:
+    if not __debug__:
+        raise RuntimeError("Python isn't running in the default debug mode.")
+    specs = Specs()
+    database_names = try_apply_aliases(
+        input("Enter the names (or aliases) of your databases/studies: ")
+    )
+    endgame_specs = bounds = num_pieces_desired_endgame = name_contains = None
+
+    pgns = []
+    for name in shlex.split(database_names):
+        if pgn_name_not_study(name) and not name.endswith('.pgn'):
+            name += '.pgn'
+        pgns.append(name)
+
+    if specs.type_of_position() == "endgame":
+        num_pieces_desired_endgame = int(user_input) if (
+            user_input := input("Exactly how many pieces in this endgame: ")
+        ) else None
+        endgame_specs = get_endgame_specs_from_user()
+        # Each element will store all the piece(s) and pawn(s) the user does/doesn't want,
+        # optionally in a particular row and/or column, and optionally in what exact quantities.
+        # E.g.: "~row 2: PK2p" (for a requirement) means to not have any of a white pawn, white king, or
+        # 2 black pawns in row 2.
+
+    elif specs.type_of_position() == "top moves":
+        bounds = get_bounds_from_user(["Enter the lower bound the top move's eval: ",
+                                       "Upper bound for top move's eval: ",
+                                       "Lower bound for the second top move's eval: ",
+                                       "Upper bound for the second top move's eval: "])
+        # bounds will be used later in the main while loop. This list will store 4 floats,
+        # representing the info above (in that order). So, lower bound for the top move in the
+        # first spot in the list, etc.
+
+    elif specs.type_of_position() == "skip move":
+        bounds = get_bounds_from_user(["Enter the lower bound eval for a position: ",
+                                       "Upper bound for a position: ",
+                                       "Lower bound eval (relative to opponent this time) for the position with move skipped : ",
+                                       "Upper bound for the position with move skipped : "])
+        # Again, like in the elif above, here bounds will be used later in the main loop.
+
+    elif specs.type_of_position() == 'name':
+        name_contains = shlex.split(input('Enter substrings to check for in some game headers: ').lower())
+        print(f"Checking for these substrings: {name_contains}")
+
+    for pgn in pgns:
+        specs_copy = deepcopy(specs)
+        specs_copy.set_output_filename(str(int(time.time_ns())))
+        specs_copy.set_pgn(pgn)
+        process_pgn(specs_copy, name_contains, num_pieces_desired_endgame, endgame_specs, bounds)
+        print("****===================================****\n\n\n\n")
 
 if __name__ == "__main__":
     main()

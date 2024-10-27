@@ -5,6 +5,7 @@ from copy import deepcopy
 import time
 import os
 import shlex
+import sys
 
 import chess.pgn
 from models import Stockfish
@@ -299,7 +300,7 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
 def main() -> None:
     if not __debug__:
         raise RuntimeError("Python isn't running in the default debug mode.")
-    specs = Specs()
+    specs = Specs(sys.argv[1] if len(sys.argv) > 1 else None)
     database_names = try_apply_aliases(
         input("Enter the names (or aliases) of your databases/studies: ")
     )

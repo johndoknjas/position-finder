@@ -87,11 +87,13 @@ class GameToSearchAfter:
         return self._game_details
 
 class Specs:
-    def __init__(self) -> None:
+    def __init__(self, type_of_position: Optional[str] = None) -> None:
         self._output_filename: Optional[str] = None
         self._pgn: Optional[str] = None
-        self._type_of_position = input("Enter 'endgame', 'top moves', 'skip move', 'underpromotion', " +
-                                       "or 'name': ").lower()
+        self._type_of_position = (
+            type_of_position or
+            input("Enter 'endgame', 'top moves', 'skip move', 'underpromotion', or 'name': ")
+        ).lower()
         self._game_to_search_after = GameToSearchAfter(self._type_of_position == 'name')
         self._move_to_begin_at = int(
             input("Enter the move to start searching for matching positions in each game: ") or "0"

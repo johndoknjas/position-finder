@@ -1,4 +1,7 @@
 """
+
+- Update the `try_apply_aliases` func to handle multiple aliases separated by spaces.
+
 - For the 'name' feature:
   - Show any pgn fields matching target substrings in red, and show links to lichess urls in blue.
 

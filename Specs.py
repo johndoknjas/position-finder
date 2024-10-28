@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import List, Tuple, Optional
+from copy import copy
 
 def file_char_to_int(file_char: str) -> int:
     file_char = file_char.lower()
@@ -90,14 +91,18 @@ class Specs:
     def __init__(self, type_of_position: Optional[str] = None) -> None:
         self._output_filename: Optional[str] = None
         self._pgn: Optional[str] = None
+        feat_options = ('endgame', 'top moves', 'skip move', 'underpromotion', 'name')
+        options_quotes = tuple(f"'{x}'" for x in feat_options)
         self._type_of_position = (
             type_of_position or
-            input("Enter 'endgame', 'top moves', 'skip move', 'underpromotion', or 'name': ")
+            input(f"Enter {', '.join(options_quotes[:-1])}, or {options_quotes[-1]}: ")
         ).lower()
+        assert self._type_of_position in feat_options
         self._game_to_search_after = GameToSearchAfter(self._type_of_position == 'name')
         self._move_to_begin_at = int(
             input("Enter the move to start searching for matching positions in each game: ") or "0"
         ) if self._type_of_position != 'name' else 0
+        self._substrings_if_name_feature: Optional[List[str]] = None
 
     def filename_of_output(self) -> str:
         assert self._output_filename is not None
@@ -131,3 +136,11 @@ class Specs:
 
     def default_output_interval(self) -> int:
         return {'endgame': 200, 'name': 40000}.get(self.type_of_position(), 40)
+
+    def set_substrs_name_feature(self, substrs: List[str]) -> None:
+        assert self.type_of_position() == 'name'
+        self._substrings_if_name_feature = copy(substrs)
+
+    def get_substrs_name_feature(self) -> List[str]:
+        assert self.type_of_position() == 'name' and self._substrings_if_name_feature
+        return copy(self._substrings_if_name_feature)

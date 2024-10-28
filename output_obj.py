@@ -2,7 +2,12 @@ from __future__ import annotations
 import os
 from typing import Optional
 
+import rich.console
+from rich.style import Style
+
 from Specs import Specs
+
+console = rich.console.Console()
 
 class Output:
     """Represents a number of variables used in outputting results to the user on games found."""
@@ -59,6 +64,32 @@ class Output:
     def newest_hit_exists(self) -> bool:
         return self._newest_hit is not None
 
+    def print_newest_hit(self, specs: Specs) -> None:
+        if specs.type_of_position() != 'name':
+            print(self.newest_hit())
+            return
+        line, rem_lines = self.newest_hit().split('\n', 1)
+        texts = {
+            'players': line.split(',')[0],
+            'opening': line.split('opening: ', 1)[1].split(', event: ')[0],
+            'event': line.split('event: ', 1)[1].split(', source: ')[0],
+            'source': line.split('source: ', 1)[1]
+        }
+        red_key = next(
+            (
+                k for k in ('event', 'players', 'opening') if any(
+                    x.lower() in texts[k].lower() for x in specs.get_substrs_name_feature()
+                )
+            ),
+            None
+        )
+        for k, text in texts.items():
+            if k != 'players':
+                print(f", {k}: ", end='')
+            color = "#ff5555" if k == red_key else "#0000ee" if 'https' in text else "#ffffff"
+            console.print(text, end='', highlight=False, style=Style(color=color))
+        print('\n' + rem_lines)
+
     def print_and_write_data(self, specs: Specs) -> None:
         """Prints the data and writes it to a file."""
         os.makedirs((folder_name := 'results'), exist_ok=True)
@@ -86,7 +117,8 @@ class Output:
                     source_name = specs.pgn().replace('/', '\\').split('\\')[-1]
                 else:
                     source_name = 'lichess study'
-                print(f"Hit from {source_name}:\n{self.newest_hit()}")
+                print(f"Hit from {source_name}:")
+                self.print_newest_hit(specs)
             print(f"#Games parsed: {self.num_games()}")
             print(f"Hit_counter = {self.num_hits()}\n\n\n")
             f = open(f"{output_filename}.txt", "w")

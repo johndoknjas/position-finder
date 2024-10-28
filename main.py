@@ -346,7 +346,8 @@ def main(args: Optional[List[str]] = None) -> None:
 
     elif specs.type_of_position() == 'name':
         name_contains = shlex.split(input('Enter substrings to check for in some game headers: ').lower())
-        print(f"Checking for these substrings: {name_contains}")
+        specs.set_substrs_name_feature(name_contains)
+        print(f"Checking for these substrings: {name_contains}\n")
 
     for pgn in pgns:
         specs_copy = deepcopy(specs)

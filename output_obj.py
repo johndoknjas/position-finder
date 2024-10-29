@@ -70,7 +70,7 @@ class Output:
             return
         line, rem_lines = self.newest_hit().split('\n', 1)
         texts = {
-            'players': line.split(',')[0],
+            'players': line.split(', opening: ')[0],
             'opening': line.split('opening: ', 1)[1].split(', event: ')[0],
             'event': line.split('event: ', 1)[1].split(', source: ')[0],
             'source': line.split('source: ', 1)[1]

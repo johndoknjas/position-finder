@@ -291,7 +291,7 @@ def main(args: Optional[list[str]] = None) -> None:
     pgns = [
         name + ('.pgn' if not name.endswith('.pgn') and len(name) != 8 else '')
         for name in try_apply_aliases(
-            args[1:] if len(args) >= 2 and args[0] == 'name' else
+            [args[1]] if len(args) >= 2 and args[0] == 'name' else
             shlex.split(input("Enter the names (or aliases) of your databases/studies: "))
         )
     ]
@@ -308,7 +308,7 @@ def main(args: Optional[list[str]] = None) -> None:
         # 2 black pawns in row 2.
 
     elif specs.type_of_position() == "top moves":
-        bounds = get_bounds_from_user(["Enter the lower bound the top move's eval: ",
+        bounds = get_bounds_from_user(["Enter the lower bound for the top move's eval: ",
                                        "Upper bound for top move's eval: ",
                                        "Lower bound for the second top move's eval: ",
                                        "Upper bound for the second top move's eval: "])
@@ -324,7 +324,10 @@ def main(args: Optional[list[str]] = None) -> None:
         # Again, like in the elif above, here bounds will be used later in the main loop.
 
     elif specs.type_of_position() == 'name':
-        name_contains = shlex.split(input('Enter substrings to check for in some game headers: ').lower())
+        name_contains = (
+            [x.lower() for x in args[2:]] or
+            shlex.split(input('Enter substrings to check for in some game headers: ').lower())
+        )
         specs.set_substrs_name_feature(name_contains)
         print(f"Checking for these substrings: {name_contains}\n")
 

@@ -295,7 +295,7 @@ def main(args: Optional[list[str]] = None) -> None:
             shlex.split(input("Enter the names (or aliases) of your databases/studies: "))
         )
     ]
-    print(f"Will be applying the '{specs.type_of_position()}' feature to these pgn sources:\n{pgns}")
+    print(f"\nWill be applying the '{specs.type_of_position()}' feature to these pgn sources:\n{pgns}")
 
     if specs.type_of_position() == "endgame":
         num_pieces_desired_endgame = int(user_input) if (

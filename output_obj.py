@@ -112,6 +112,8 @@ class Output:
                     f"{self.num_hits()}\n\n")
             f.close()
         else:
+            print(f"#Games parsed: {self.num_games()}")
+            print(f"Hit_counter = {self.num_hits()}\n")
             if self.newest_hit_exists():
                 if specs.pgn().endswith('.pgn'):
                     source_name = specs.pgn().replace('/', '\\').split('\\')[-1]
@@ -119,8 +121,6 @@ class Output:
                     source_name = 'lichess study'
                 print(f"Hit from {source_name}:")
                 self.print_newest_hit(specs)
-            print(f"#Games parsed: {self.num_games()}")
-            print(f"Hit_counter = {self.num_hits()}\n\n\n")
             f = open(f"{output_filename}.txt", "w")
             f.write(f"{self.output_str()}#Games parsed: {self.num_games()}\nHit counter: " +
                     f"{self.num_hits()}\n\n")

@@ -44,6 +44,7 @@ def generate_test_cases() -> list[MyTestCase]:
     return [
         *factory(SpecsTestCase('wip local', 'kasparov', '2.txt'), True, True),
         *factory(SpecsTestCase('local wip', 'kasparov', '3.txt'), True, True),
+        *factory(SpecsTestCase('local', 'panov', '4.txt'), True, True),
         *factory(SpecsTestCase('openings', 'bayonet', '1.txt'), True, True),
     ]
 

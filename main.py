@@ -14,6 +14,7 @@ from output_obj import Output
 from Specs import Piece_Quantities, Specs
 import studies
 import Utils
+from Args import set_args, args
 
 PIECE_CHARS: list[str] = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K", "k"]
 
@@ -159,8 +160,7 @@ def switch_whose_turn(fen: str) -> str:
 def try_apply_aliases(inputs: list[str]) -> list[str]:
     """For each input, if it's an alias then get the string(s) it stands for. Otherwise,
        just give it back."""
-    with open('aliases.txt', mode='r') as f:
-        pairs = {k.lower(): v for k,v in (line.strip().split(maxsplit=1) for line in f)}
+    pairs = Utils.get_aliases()
     meanings = []
     for alias in inputs:
         assert not alias.startswith(('"', "'")) and not alias.endswith(('"', "'"))
@@ -279,19 +279,16 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
     if temp_pgn_file is not None:
         os.remove(temp_pgn_file)
 
-def main(args: Optional[list[str]] = None) -> None:
+def main(argv: Optional[list[str]] = None) -> None:
     if not __debug__:
         raise RuntimeError("Python isn't running in the default debug mode.")
-    if args is None:
-        args = deepcopy(sys.argv)
-    if args and args[0].endswith('.py'):
-        args = args[1:]
-    specs = Specs(args[0] if args else None)
+    set_args(sys.argv if argv is None else argv)
+    specs = Specs(args().feature())
     endgame_specs = bounds = num_pieces_desired_endgame = name_contains = None
     pgns = [
         name + ('.pgn' if not name.endswith('.pgn') and len(name) != 8 else '')
         for name in try_apply_aliases(
-            [args[1]] if len(args) >= 2 and args[0] == 'name' else
+            args().dbs_aliases() or
             shlex.split(input("Enter the names (or aliases) of your databases/studies: "))
         )
     ]
@@ -324,8 +321,7 @@ def main(args: Optional[list[str]] = None) -> None:
         # Again, like in the elif above, here bounds will be used later in the main loop.
 
     elif specs.type_of_position() == 'name':
-        name_contains = (
-            [x.lower() for x in args[2:]] or
+        name_contains = args().substrings() or (
             shlex.split(input('Enter substrings to check for in some game headers: ').lower())
         )
         specs.set_substrs_name_feature(name_contains)

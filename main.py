@@ -7,6 +7,7 @@ import os
 import shlex
 import sys
 from itertools import product
+import requests
 
 import chess.pgn
 from models import Stockfish
@@ -170,17 +171,17 @@ def try_apply_aliases(inputs: list[str]) -> list[str]:
 def process_pgn(specs: Specs, name_contains: Optional[list[str]],
                 num_pieces_desired_endgame: Optional[int], endgame_specs, bounds) -> None:
     stockfish = Stockfish(path="stockfish")
-    temp_pgn_file = None
     if specs.pgn().endswith('.pgn'):
         pgn = open(specs.pgn(), "r", errors="replace", encoding="utf-8-sig")
     else:
-        pgn_data = studies.get_study_pgn(specs.pgn())
-        os.makedirs((folder_name := 'results'), exist_ok=True)
-        temp_pgn_file = os.path.join(folder_name, f"{time.time_ns()}.txt")
-        f = open(temp_pgn_file, "w")
-        f.write(pgn_data)
-        f.close()
-        pgn = open(temp_pgn_file, "r")
+        os.makedirs(cache_dir := os.path.join('lichess-cache', study_id := specs.pgn()), exist_ok=True)
+        try:
+            pgn_data = studies.get_study_pgn(study_id)
+            with open(os.path.join(cache_dir, f"{study_id}-{time.time_ns()}.pgn"), "w") as f:
+                f.write(pgn_data)
+        except requests.exceptions.ConnectionError:
+            pass
+        pgn = open(Utils.most_recent_file(cache_dir), "r")
     output_data = Output()
     reached_first_game_for_search = specs.do_not_skip_any_games()
     while True:
@@ -276,8 +277,6 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
             output_data.print_and_write_data(specs)
     # End of the while loop for iterating over all the games.
     pgn.close()
-    if temp_pgn_file is not None:
-        os.remove(temp_pgn_file)
 
 def main(argv: Optional[list[str]] = None) -> None:
     if not __debug__:

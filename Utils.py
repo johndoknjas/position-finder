@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shlex
+import os
 
 def remove_lines_starting_with(multline_str: str, starting_substr: str) -> str:
     as_lst = multline_str.splitlines()
@@ -19,3 +20,7 @@ def refers_to_db(s: str) -> bool:
         s.count('\\') >= 3 or
         any(s in shlex.split(l) for l in get_aliases().values())
     )
+
+def most_recent_file(dir: str) -> str:
+    """Returns the filename of the most recent file in the directory."""
+    return max((os.path.join(dir, basename) for basename in os.listdir(dir)), key=os.path.getmtime)

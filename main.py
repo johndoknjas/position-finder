@@ -8,6 +8,7 @@ import shlex
 import sys
 from itertools import product
 import requests
+import platform
 
 import chess.pgn
 from models import Stockfish
@@ -281,6 +282,9 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
 def main(argv: Optional[list[str]] = None) -> None:
     if not __debug__:
         raise RuntimeError("Python isn't running in the default debug mode.")
+    if (platform.system() == 'Linux'):
+        # todo - allow user to choose if they want to run on Linux with a config option or arg
+        raise RuntimeError("Running on Linux")
     set_args(sys.argv if argv is None else argv)
     specs = Specs(args().feature())
     endgame_specs = bounds = num_pieces_desired_endgame = name_contains = None

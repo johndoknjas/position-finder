@@ -283,7 +283,6 @@ def main(argv: Optional[list[str]] = None) -> None:
     if not __debug__:
         raise RuntimeError("Python isn't running in the default debug mode.")
     if (platform.system() == 'Linux'):
-        # todo - allow user to choose if they want to run on Linux with a config option or arg
         raise RuntimeError("Running on Linux")
     set_args(sys.argv if argv is None else argv)
     specs = Specs(args().feature())

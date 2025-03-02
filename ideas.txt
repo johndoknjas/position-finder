@@ -1,3 +1,6 @@
+- If 'classical' is one of the keywords user wants to search in name feature, don't include
+  "rated classical game" from event header.
+- Allow user to choose if they want to run on Linux with a config option or arg
 - For the `endgame` feature, give examples to the user about piece requirement strings.
 - For tests:
   - Add more tests for the `name` feature in `test_name.py`. Also try to test the name feature

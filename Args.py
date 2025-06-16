@@ -25,8 +25,8 @@ class Args:
         """Returns either an empty list, or a list of size 1"""
         return [self._args[1]] if self.num_args() >= 2 else []
 
-    def substrings(self) -> list[str]:
-        """Returns a list of any substrings (all lowercased) entered for the `name` feature."""
+    def additional_args(self) -> list[str]:
+        """Returns a list of any additional cli args (all lowercased) entered for the `name` feature."""
         return [x.lower() for x in self._args[2:]]
 
 _args: Optional[Args] = None

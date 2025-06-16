@@ -205,7 +205,9 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
             continue
 
         if specs.type_of_position() == 'name':
-            if (headers := chess.pgn.read_headers(pgn)) is None:
+            game = chess.pgn.read_game(pgn) if specs.verbose_for_name_feature() else None
+            headers = game.headers if game else chess.pgn.read_headers(pgn)
+            if headers is None:
                 break
             white, black, opening, event, source = (
                 headers.get(x, '?') for x in ("White", "Black", "Opening", "Event", "Source")
@@ -214,9 +216,12 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
             if any(x.lower() in y.lower() for x, y in itertools.product(
                 name_contains, (white, black, opening, event)
             )):
-                output_data.add_newest_hit(
-                    f"{white}-{black}, opening: {opening}, event: {event}, source: {source}"
-                )
+                if specs.verbose_for_name_feature():
+                    output_data.add_newest_hit(game)
+                else:
+                    output_data.add_newest_hit(
+                        f"{white}-{black}, opening: {opening}, event: {event}, source: {source}"
+                    )
         else:
             if (current_game := chess.pgn.read_game(pgn)) is None:
                 break
@@ -323,9 +328,11 @@ def main(argv: Optional[list[str]] = None) -> None:
         # Again, like in the elif above, here bounds will be used later in the main loop.
 
     elif specs.type_of_position() == 'name':
-        name_contains = args().substrings() or (
-            shlex.split(input('Enter substrings to check for in some game headers: ').lower())
+        user_input = args().additional_args() or (
+            shlex.split(input("Enter substrings to check for in some game headers (include 'verbose' to output full pgns): ").lower())
         )
+        specs.set_verbose_name_feature('verbose' in user_input)
+        name_contains = [x for x in user_input if x != 'verbose']
         specs.set_substrs_name_feature(name_contains)
         print(f"Checking for these substrings: {name_contains}\n")
 

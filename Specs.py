@@ -103,6 +103,7 @@ class Specs:
             input("Enter the move to start searching for matching positions in each game: ") or "0"
         ) if self._type_of_position != 'name' else 0
         self._substrings_if_name_feature: Optional[List[str]] = None
+        self._verbose_name_feature: Optional[bool] = None
 
     def filename_of_output(self) -> str:
         assert self._output_filename is not None
@@ -144,3 +145,11 @@ class Specs:
     def get_substrs_name_feature(self) -> List[str]:
         assert self.type_of_position() == 'name' and self._substrings_if_name_feature
         return copy(self._substrings_if_name_feature)
+
+    def set_verbose_name_feature(self, verbose: bool) -> None:
+        assert self.type_of_position() == 'name'
+        self._verbose_name_feature = verbose
+
+    def verbose_for_name_feature(self) -> bool:
+        assert self.type_of_position() == 'name' and self._verbose_name_feature is not None
+        return self._verbose_name_feature

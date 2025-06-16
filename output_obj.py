@@ -37,7 +37,7 @@ class Output:
     def add_newest_hit(self, newest_hit: str, update_primary_vars: bool = True,
                        update_secondary_vars: bool = False) -> None:
         assert self._newest_hit is None
-        self._newest_hit = f"{newest_hit}\n\n----------\n\n"
+        self._newest_hit = f"{newest_hit}\n\n\n"
         if update_primary_vars:
             self.append_to_output_str(self._newest_hit)
             self.increment_hits()
@@ -65,7 +65,7 @@ class Output:
         return self._newest_hit is not None
 
     def print_newest_hit(self, specs: Specs) -> None:
-        if specs.type_of_position() != 'name':
+        if specs.type_of_position() != 'name' or specs.verbose_for_name_feature():
             print(self.newest_hit())
             return
         line, rem_lines = self.newest_hit().split('\n', 1)

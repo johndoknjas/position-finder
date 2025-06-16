@@ -212,16 +212,16 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
             white, black, opening, event, source = (
                 headers.get(x, '?') for x in ("White", "Black", "Opening", "Event", "Source")
             )
+            lowercase_fields_to_check_merged = ', '.join((white, black, opening, event)).lower()
             assert name_contains is not None
-            if any(x.lower() in y.lower() for x, y in itertools.product(
-                name_contains, (white, black, opening, event)
-            )):
-                if specs.verbose_for_name_feature():
-                    output_data.add_newest_hit(game)
-                else:
-                    output_data.add_newest_hit(
-                        f"{white}-{black}, opening: {opening}, event: {event}, source: {source}"
-                    )
+            if any(
+                all(x.lower() in lowercase_fields_to_check_merged for x in substr.split('&&'))
+                for substr in name_contains
+            ):
+                output_data.add_newest_hit(
+                    game if specs.verbose_for_name_feature()
+                    else f"{white}-{black}, opening: {opening}, event: {event}, source: {source}"
+                )
         else:
             if (current_game := chess.pgn.read_game(pgn)) is None:
                 break

@@ -27,7 +27,6 @@ class Args:
 
     def substrings(self) -> list[str]:
         """Returns a list of any substrings (all lowercased) entered for the `name` feature."""
-        assert self.feature() == 'name'
         return [x.lower() for x in self._args[2:]]
 
 _args: Optional[Args] = None

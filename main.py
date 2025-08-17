@@ -171,7 +171,8 @@ def try_apply_aliases(inputs: list[str]) -> list[str]:
 
 def process_pgn(specs: Specs, name_contains: Optional[list[str]],
                 num_pieces_desired_endgame: Optional[int], endgame_specs, bounds) -> None:
-    stockfish = Stockfish(path="stockfish")
+    if specs.type_of_position() == 'skip move':
+        stockfish = Stockfish(path="stockfish")
     if specs.pgn().endswith('.pgn'):
         pgn = open(specs.pgn(), "r", errors="replace", encoding="utf-8-sig")
     else:

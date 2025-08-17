@@ -338,11 +338,12 @@ def main(argv: Optional[list[str]] = None) -> None:
         print(f"Checking for these substrings: {name_contains}\n")
 
     for pgn in pgns:
+        print(f"Results for {pgn}:\n\n")
         specs_copy = deepcopy(specs)
         specs_copy.set_output_filename(str(time.time_ns()))
         specs_copy.set_pgn(pgn)
         process_pgn(specs_copy, name_contains, num_pieces_desired_endgame, endgame_specs, bounds)
-        print("****===================================****\n\n\n\n")
+        print("****===================================****\n\n")
 
 if __name__ == "__main__":
     main()

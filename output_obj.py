@@ -102,12 +102,12 @@ class Output:
             print(f"#Games where underpromotion is best move and player missed it: {self.num_hits()}")
             print(f"#Games parsed: {self.num_games()}")
 
-            f = open(f"{output_filename}-games where underpromotion is best move.txt", "w")
+            f = open(f"{output_filename}-games where underpromotion is best move.pgn", "w")
             f.write(f"{self.output_str(True)}#Games parsed: {self.num_games()}\nHit counter: " +
                     f"{self.num_hits(True)}\n\n")
             f.close()
 
-            f = open(f"{output_filename}-games where underpromotion is best and player missed it.txt", "w")
+            f = open(f"{output_filename}-games where underpromotion is best and player missed it.pgn", "w")
             f.write(f"{self.output_str()}#Games parsed: {self.num_games()}\nHit counter: " +
                     f"{self.num_hits()}\n\n")
             f.close()
@@ -121,7 +121,7 @@ class Output:
                     source_name = 'lichess study'
                 print(f"Hit from {source_name}:")
                 self.print_newest_hit(specs)
-            f = open(f"{output_filename}.txt", "w")
+            f = open(f"{output_filename}.pgn", "w")
             f.write(f"{self.output_str()}#Games parsed: {self.num_games()}\nHit counter: " +
                     f"{self.num_hits()}\n\n")
             f.close()

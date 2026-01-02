@@ -163,11 +163,11 @@ def try_apply_aliases(inputs: list[str]) -> list[str]:
     """For each input, if it's an alias then get the string(s) it stands for. Otherwise,
        just give it back."""
     pairs = Utils.get_aliases()
-    meanings = []
+    meanings: list[str] = []
     for alias in inputs:
         assert not alias.startswith(('"', "'")) and not alias.endswith(('"', "'"))
         meanings.extend(shlex.split(pairs[alias.lower()]) if alias.lower() in pairs else [alias])
-    return meanings
+    return meanings if set(x.lower() for x in meanings) == set(x.lower() for x in inputs) else try_apply_aliases(meanings)
 
 def process_pgn(specs: Specs, name_contains: Optional[list[str]],
                 num_pieces_desired_endgame: Optional[int], endgame_specs, bounds) -> None:

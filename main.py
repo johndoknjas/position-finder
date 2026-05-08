@@ -213,11 +213,12 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
             white, black, opening, event, source = (
                 headers.get(x, '?') for x in ("White", "Black", "Opening", "Event", "Source")
             )
-            lowercase_fields_to_check_merged = ', '.join((white, black, opening, event)).lower()
+            lowercase_fields_to_check = [x.lower() for x in (white, black, opening, event)]
             assert name_contains is not None
             if any(
-                all(x.lower() in lowercase_fields_to_check_merged for x in substr.split('&&'))
+                all(x.lower() in field for x in substr.split('&&'))
                 for substr in name_contains
+                for field in lowercase_fields_to_check
             ):
                 output_data.add_newest_hit(
                     game if specs.verbose_for_name_feature()

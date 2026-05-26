@@ -8,8 +8,11 @@ def remove_lines_starting_with(multline_str: str, starting_substr: str) -> str:
     return '\n'.join(line for line in as_lst if not line.startswith(starting_substr))
 
 def get_aliases() -> dict[str, str]:
-    with open('aliases.txt', mode='r') as f:
-        return {k.lower(): v for k,v in (line.strip().split(maxsplit=1) for line in f)}
+    try:
+        with open('aliases.txt', mode='r') as f:
+            return {k.lower(): v for k,v in (line.strip().split(maxsplit=1) for line in f)}
+    except FileNotFoundError:
+        return {}
 
 def refers_to_db(s: str) -> bool:
     """Returns true if s likely refers to an alias, pgn path, or study"""

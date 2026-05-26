@@ -22,7 +22,7 @@ PIECE_CHARS: list[str] = ["P", "p", "N", "n", "B", "b", "R", "r", "Q", "q", "K",
 def get_endgame_specs_from_user() -> list[Piece_Quantities]:
     endgame_specs: list[Piece_Quantities] = []
     while True:
-        piece_requirements = input("Enter a piece requirement string, or just press enter to stop: ")
+        piece_requirements = input("Enter a piece requirement string (e.g., 'Qq', 'row8:k', '~fileb:R', 'e4:P'), or just press enter to stop: ")
         if piece_requirements == "":
             return endgame_specs
         endgame_specs.append(Piece_Quantities(piece_requirements))

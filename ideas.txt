@@ -1,3 +1,4 @@
+- Add functionality to sort a pgn by date?
 - If 'classical' is one of the keywords user wants to search in name feature, don't include
   "rated classical game" from event header.
 - For tests:

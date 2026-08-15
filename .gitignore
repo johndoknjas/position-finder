@@ -4,6 +4,9 @@ stockfish*
 *.ini
 *.txt
 !ideas.txt
+lichess-cache/
+results/
+pgn-index/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

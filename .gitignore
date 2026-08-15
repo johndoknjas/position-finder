@@ -1,5 +1,7 @@
 *.pgn
 *.pgi
+pgn-index/
+*.jsonl
 stockfish*
 *.ini
 *.txt

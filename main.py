@@ -13,6 +13,7 @@ import chess.pgn
 from models import Stockfish
 from output_obj import Output
 from Specs import Piece_Quantities, Specs
+import find_exercises
 import studies
 import Utils
 from Args import set_args, args
@@ -169,7 +170,13 @@ def try_apply_aliases(inputs: list[str]) -> list[str]:
     return meanings if set(x.lower() for x in meanings) == set(x.lower() for x in inputs) else try_apply_aliases(meanings)
 
 def process_pgn(specs: Specs, name_contains: Optional[list[str]],
-                num_pieces_desired_endgame: Optional[int], endgame_specs, bounds) -> None:
+                num_pieces_desired_endgame: Optional[int], endgame_specs, bounds,
+                exercise_specs: Optional[tuple[int, int]] = None) -> None:
+    if specs.type_of_position() in ('prophylaxis', 'conversion'):
+        assert exercise_specs is not None
+        num_games, min_elo = exercise_specs
+        find_exercises.search_recent_games(specs, Output(), num_games, min_elo)
+        return
     stockfish = Stockfish(path="stockfish")
     if specs.pgn().endswith('.pgn'):
         pgn = open(specs.pgn(), "r", errors="replace", encoding="utf-8-sig")
@@ -284,12 +291,19 @@ def process_pgn(specs: Specs, name_contains: Optional[list[str]],
     # End of the while loop for iterating over all the games.
     pgn.close()
 
+def get_exercise_specs_from_user() -> tuple[int, int]:
+    """Asks how much of the database to look through, and how strong the players must be."""
+    num_games = int(input("How many games (most recent first) to analyse: ") or "500")
+    min_elo = int(input("Minimum rating for both players (enter 0 for no minimum): ") or "0")
+    return num_games, min_elo
+
 def main(argv: Optional[list[str]] = None) -> None:
     if not __debug__:
         raise RuntimeError("Python isn't running in the default debug mode.")
     set_args(sys.argv if argv is None else argv)
     specs = Specs(args().feature())
     endgame_specs = bounds = num_pieces_desired_endgame = name_contains = None
+    exercise_specs = None
     pgns = [
         name + ('.pgn' if not name.endswith('.pgn') and len(name) != 8 else '')
         for name in try_apply_aliases(
@@ -325,6 +339,11 @@ def main(argv: Optional[list[str]] = None) -> None:
                                        "Upper bound for the position with move skipped : "])
         # Again, like in the elif above, here bounds will be used later in the main loop.
 
+    elif specs.type_of_position() in ('prophylaxis', 'conversion'):
+        exercise_specs = get_exercise_specs_from_user()
+        # The two exercise features go through the database most recent game first, so they
+        # need to know how far back to go (and which games are worth the engine time).
+
     elif specs.type_of_position() == 'name':
         user_input = args().additional_args() or (
             shlex.split(input("Enter substrings to check for in some game headers (include 'verbose' to output full pgns): ").lower())
@@ -339,7 +358,8 @@ def main(argv: Optional[list[str]] = None) -> None:
         specs_copy = deepcopy(specs)
         specs_copy.set_output_filename(str(time.time_ns()))
         specs_copy.set_pgn(pgn)
-        process_pgn(specs_copy, name_contains, num_pieces_desired_endgame, endgame_specs, bounds)
+        process_pgn(specs_copy, name_contains, num_pieces_desired_endgame, endgame_specs, bounds,
+                    exercise_specs)
         print("****===================================****\n\n")
 
 if __name__ == "__main__":

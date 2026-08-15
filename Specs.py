@@ -91,7 +91,8 @@ class Specs:
     def __init__(self, type_of_position: Optional[str] = None) -> None:
         self._output_filename: Optional[str] = None
         self._pgn: Optional[str] = None
-        feat_options = ('endgame', 'top moves', 'skip move', 'underpromotion', 'name')
+        feat_options = ('endgame', 'top moves', 'skip move', 'underpromotion', 'name',
+                        'prophylaxis', 'conversion')
         options_quotes = tuple(f"'{x}'" for x in feat_options)
         self._type_of_position = (
             type_of_position or
@@ -136,7 +137,8 @@ class Specs:
         return self._move_to_begin_at
 
     def default_output_interval(self) -> int:
-        return {'endgame': 200, 'name': 40000}.get(self.type_of_position(), 40)
+        return {'endgame': 200, 'name': 40000,
+                'prophylaxis': 20, 'conversion': 20}.get(self.type_of_position(), 40)
 
     def set_substrs_name_feature(self, substrs: List[str]) -> None:
         assert self.type_of_position() == 'name'

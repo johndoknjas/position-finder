@@ -6,11 +6,14 @@ def get_api_key() -> str:
         return f.readline().strip('\n')
 
 def get_study_pgn(study_id) -> str:
-    local_response = requests.get(
-        f'http://localhost:9663/api/study/{study_id}.pgn?source=true'
-    )
-    if local_response.status_code == 200:
-        return local_response.text
+    try:
+        local_response = requests.get(
+            f'http://localhost:9663/api/study/{study_id}.pgn?source=true'
+        )
+        if local_response.status_code == 200:
+            return local_response.text
+    except requests.exceptions.ConnectionError:
+        pass
     remote_response = requests.get(
         f'https://lichess.org/api/study/{study_id}.pgn?source=true',
         headers={"Authorization": f"Bearer {get_api_key()}"}
